@@ -8,7 +8,7 @@ import "dotenv/config";
 import authRoutes from "./routes/auth-routes.js";
 
 
-import errorHandler from "./middlewares/errorHandler.js";
+import errorHandler from "./middleware/error-handler.js";
 
 
 const app = express();

@@ -16,6 +16,7 @@ export function SignUpForm() {
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
@@ -64,6 +65,32 @@ export function SignUpForm() {
           className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           placeholder="ornek@email.com"
         />
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="phone" className="block text-sm font-medium">
+          Telefon Numarası
+        </label>
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+            <span className="text-lg">🇹🇷</span>
+            <span className="text-base font-normal text-foreground">+90</span>
+          </div>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            required
+            className="w-full pl-20 pr-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            placeholder="5XX XXX XX XX"
+            pattern="[0-9]{10}"
+            maxLength={10}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '');
+              e.target.value = value;
+            }}
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
