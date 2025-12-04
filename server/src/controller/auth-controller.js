@@ -24,10 +24,11 @@ export default class AuthController {
     async logout(req, res, next) {
         try {
 
-        } catch (error) {
+        }
+        catch (error) {
             next(error);
         }
-     }
+    }
 
 
 
