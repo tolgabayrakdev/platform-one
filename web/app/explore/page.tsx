@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface User {
-  id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -48,7 +47,7 @@ export default function ExplorePage() {
         }
 
         const data = await response.json();
-        setUser(data.user.user);
+        setUser(data.user);
       } catch (error) {
         console.error('Error fetching user:', error);
       } finally {
