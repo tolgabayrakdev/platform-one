@@ -24,8 +24,8 @@ export function SignUpForm() {
         });
 
         if (response.ok) {
-          // Kullanıcı zaten giriş yapmış, explore'a yönlendir
-          window.location.href = '/explore';
+          // Kullanıcı zaten giriş yapmış, feed'e yönlendir
+          window.location.href = '/feed';
           return;
         }
       } catch {

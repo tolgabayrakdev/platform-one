@@ -6,6 +6,9 @@ import 'dotenv/config';
 
 import pool from './config/database.js';
 import authRoutes from './routes/auth-routes.js';
+import locationRoutes from './routes/location-routes.js';
+import userRoutes from './routes/user-routes.js';
+import postRoutes from './routes/post-routes.js';
 import errorHandler from './middleware/error-handler.js';
 import logger from './config/logger.js';
 import { generalLimiter } from './middleware/rate-limiter.js';
@@ -34,7 +37,11 @@ app.use(morgan('dev'));
 // Genel rate limiter - tüm istekler için
 app.use(generalLimiter);
 
+// Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/posts', postRoutes);
 
 app.use(errorHandler);
 

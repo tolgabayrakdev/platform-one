@@ -1,5 +1,5 @@
 "use client"
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -9,7 +9,8 @@ interface AuthProviderProps {
 
 
 function AuthProvider({ children }: AuthProviderProps) {
-    const router = useRouter()
+    const router = useRouter();
+    const pathname = usePathname();
     const [loading, setLoading] = useState(true);
     const [rateLimited, setRateLimited] = useState(false);
 
@@ -27,6 +28,21 @@ function AuthProvider({ children }: AuthProviderProps) {
             clearTimeout(timeoutId);
             
             if (res.status === 200) {
+                // Kullanıcı giriş yapmış, mahalle kontrolü yap
+                const profileRes = await fetch('/api/users/profile', {
+                    credentials: 'include',
+                });
+
+                if (profileRes.ok) {
+                    const data = await profileRes.json();
+                    
+                    // Mahalle seçilmemişse ve onboarding'de değilse yönlendir
+                    if (!data.profile?.neighborhood && pathname !== '/onboarding') {
+                        router.push('/onboarding');
+                        return;
+                    }
+                }
+
                 setLoading(false);
                 setRateLimited(false);
             } else if (res.status === 429) {
@@ -49,7 +65,7 @@ function AuthProvider({ children }: AuthProviderProps) {
 
     useEffect(() => {
         verifyAuthToken();
-    }, []);
+    }, [pathname]);
 
     const handleRetry = () => {
         setLoading(true);
