@@ -1,10 +1,10 @@
-export const BRAND_NAME = "PlatformOne";
+export const BRAND_NAME = 'PlatformOne';
 
 /**
  * Hoş geldin email template'i
  */
 export function getWelcomeEmailTemplate(firstName) {
-    return `
+  return `
         <!DOCTYPE html>
         <html>
         <head>
@@ -33,7 +33,7 @@ export function getWelcomeEmailTemplate(firstName) {
  * Email doğrulama kodu template'i
  */
 export function getEmailVerificationTemplate(code) {
-    return `
+  return `
         <!DOCTYPE html>
         <html>
         <head>
@@ -60,4 +60,3 @@ export function getEmailVerificationTemplate(code) {
         </html>
     `;
 }
-

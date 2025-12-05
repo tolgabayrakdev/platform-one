@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/app.js",
-    "dev": "node --watch src/app.js"
+    "dev": "node --watch src/app.js",
+    "format": "prettier --write .",
+    "lint": "eslint src/"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +30,8 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-plugin-unused-imports": "^4.3.0",
     "prettier": "^3.7.4"
   }
 }

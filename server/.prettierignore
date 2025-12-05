@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Database
+db/
+
+# IDE
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+
+# Package lock
+package-lock.json
