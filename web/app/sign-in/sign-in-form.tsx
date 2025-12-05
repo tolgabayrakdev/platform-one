@@ -9,6 +9,7 @@ type VerificationStep = "login" | "email-verify" | "phone-verify";
 export function SignInForm() {
   const [step, setStep] = useState<VerificationStep>("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [userPassword, setUserPassword] = useState("");
@@ -17,6 +18,30 @@ export function SignInForm() {
   const [emailCodeTimer, setEmailCodeTimer] = useState(90); // 90 saniye
   const [phoneCodeTimer, setPhoneCodeTimer] = useState(90); // 90 saniye
   const [userPhone, setUserPhone] = useState("");
+
+  // Giriş yapmış kullanıcıyı kontrol et
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          // Kullanıcı zaten giriş yapmış, explore'a yönlendir
+          window.location.href = '/explore';
+          return;
+        }
+      } catch {
+        // Hata olursa devam et (giriş yapmamış)
+      } finally {
+        setCheckingAuth(false);
+      }
+    }
+
+    checkAuth();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,8 +85,6 @@ export function SignInForm() {
         return;
       }
 
-      toast.success("Giriş başarılı!");
-      // Explore sayfasına yönlendir
       window.location.href = '/explore';
     } catch (error: any) {
       toast.error(error.message || "Giriş başarısız. Lütfen tekrar deneyin.");
@@ -365,6 +388,15 @@ export function SignInForm() {
           )}
         </div>
       </form>
+    );
+  }
+
+  // Auth kontrolü yapılıyor
+  if (checkingAuth) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 

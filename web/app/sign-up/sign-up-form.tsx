@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -10,8 +10,33 @@ type Step = "info" | "success";
 export function SignUpForm() {
   const [step, setStep] = useState<Step>("info");
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Giriş yapmış kullanıcıyı kontrol et
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          // Kullanıcı zaten giriş yapmış, explore'a yönlendir
+          window.location.href = '/explore';
+          return;
+        }
+      } catch {
+        // Hata olursa devam et (giriş yapmamış)
+      } finally {
+        setCheckingAuth(false);
+      }
+    }
+
+    checkAuth();
+  }, []);
 
   // Adım 1: Bilgileri gir ve kayıt ol
   async function handleInfoSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -54,6 +79,15 @@ export function SignUpForm() {
     }
   }
 
+
+  // Auth kontrolü yapılıyor
+  if (checkingAuth) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   // Adım 1: Bilgileri gir
   if (step === "info") {
