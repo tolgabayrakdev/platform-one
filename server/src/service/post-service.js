@@ -210,6 +210,7 @@ export default class PostService {
         u.first_name,
         u.last_name,
         n.name as neighborhood_name,
+        n.id as neighborhood_id,
         d.name as district_name,
         c.name as city_name
       FROM posts p
@@ -232,6 +233,7 @@ export default class PostService {
       category: post.category,
       content: post.content,
       created_at: post.created_at,
+      neighborhood_id: post.neighborhood_id,
       user: {
         id: post.user_id,
         first_name: post.first_name,
@@ -243,5 +245,39 @@ export default class PostService {
         city: post.city_name
       }
     };
+  }
+
+  /**
+   * Benzer ilanları getir (aynı mahallede, mevcut ilan hariç)
+   */
+  async getRelatedPosts(postId, neighborhoodId, limit = 3) {
+    const result = await pool.query(
+      `SELECT 
+        p.id,
+        p.category,
+        p.content,
+        p.created_at,
+        u.id as user_id,
+        u.first_name,
+        u.last_name
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.neighborhood_id = $1 AND p.id != $2
+      ORDER BY p.created_at DESC
+      LIMIT $3`,
+      [neighborhoodId, postId, limit]
+    );
+
+    return result.rows.map((post) => ({
+      id: post.id,
+      category: post.category,
+      content: post.content,
+      created_at: post.created_at,
+      user: {
+        id: post.user_id,
+        first_name: post.first_name,
+        last_name: post.last_name
+      }
+    }));
   }
 }

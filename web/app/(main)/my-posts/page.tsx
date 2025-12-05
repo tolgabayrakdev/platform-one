@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 interface Location {
@@ -28,7 +27,6 @@ const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: str
 };
 
 export default function MyPostsPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -146,16 +144,11 @@ export default function MyPostsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-xl mx-auto px-4 h-12 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
-              ←
-            </button>
             <span className="font-semibold">İlanlarım</span>
-          </div>
           <span className="text-sm text-muted-foreground">
             {posts.length} ilan
           </span>

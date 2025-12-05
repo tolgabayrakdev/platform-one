@@ -11,7 +11,8 @@ router.get('/my', authenticateToken, postController.getMyPosts.bind(postControll
 router.post('/', authenticateToken, postController.createPost.bind(postController));
 router.delete('/:id', authenticateToken, postController.deletePost.bind(postController));
 
-// Public routes - SEO için auth gerektirmez (en sonda olmalı - :id parametrik)
-router.get('/:id', postController.getPost.bind(postController));
+// Public routes - SEO için auth gerektirmez
+router.get('/:id/related', postController.getRelatedPosts.bind(postController)); // Benzer ilanlar
+router.get('/:id', postController.getPost.bind(postController)); // Tek ilan (en sonda - :id parametrik)
 
 export default router;

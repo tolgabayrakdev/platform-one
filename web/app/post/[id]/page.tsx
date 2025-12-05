@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import BackButton from "./back-button";
+import ShareButton from "./share-button";
 
 interface Post {
   id: string;
@@ -31,6 +32,18 @@ const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: str
 
 const API_URL = process.env.BACKEND_URL || "http://localhost:1234";
 
+interface RelatedPost {
+  id: string;
+  category: string;
+  content: string;
+  created_at: string;
+  user: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+}
+
 async function getPost(id: string): Promise<Post | null> {
   try {
     const res = await fetch(`${API_URL}/api/posts/${id}`, {
@@ -41,6 +54,19 @@ async function getPost(id: string): Promise<Post | null> {
     return data.post;
   } catch {
     return null;
+  }
+}
+
+async function getRelatedPosts(id: string): Promise<RelatedPost[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/posts/${id}/related?limit=3`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.posts || [];
+  } catch {
+    return [];
   }
 }
 
@@ -101,8 +127,11 @@ function formatDate(dateStr: string) {
 
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const post = await getPost(id);
-  const loggedIn = await isAuthenticated();
+  const [post, relatedPosts, loggedIn] = await Promise.all([
+    getPost(id),
+    getRelatedPosts(id),
+    isAuthenticated()
+  ]);
 
   if (!post) {
     notFound();
@@ -149,7 +178,57 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
             <span>·</span>
             <span>📍 {post.location.neighborhood}, {post.location.district}, {post.location.city}</span>
           </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-4 pt-3 border-t border-border">
+            <ShareButton 
+              postId={post.id}
+              title={`${category.emoji} ${category.label} - Mahalle`}
+              text={post.content.slice(0, 100) + (post.content.length > 100 ? "..." : "")}
+            />
+          </div>
         </article>
+
+        {/* Bu Mahallede - Benzer İlanlar */}
+        {relatedPosts.length > 0 && (
+          <section className="px-4 py-6 border-t border-border">
+            <h2 className="text-sm font-semibold mb-4">📍 Bu Mahallede</h2>
+            <div className="space-y-3">
+              {relatedPosts.map((relatedPost) => {
+                const relatedCategory = CATEGORY_LABELS[relatedPost.category] || { label: relatedPost.category, emoji: "📌", color: "bg-gray-100 text-gray-800" };
+                return (
+                  <Link
+                    key={relatedPost.id}
+                    href={`/post/${relatedPost.id}`}
+                    className="block p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
+                        {relatedPost.user.first_name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium">
+                            {relatedPost.user.first_name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(relatedPost.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {relatedPost.content}
+                        </p>
+                        <span className={`inline-block mt-2 text-xs px-2 py-0.5 rounded ${relatedCategory.color}`}>
+                          {relatedCategory.emoji} {relatedCategory.label}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* CTA - Giriş yapmamışlar için */}
         {!loggedIn && (

@@ -149,6 +149,31 @@ export default class PostController {
   }
 
   /**
+   * Benzer ilanları getir (aynı mahallede)
+   * GET /api/posts/:id/related
+   */
+  async getRelatedPosts(req, res, next) {
+    try {
+      const { id } = req.params;
+      const limit = parseInt(req.query.limit) || 3;
+
+      if (!id) {
+        throw new HttpException(400, 'İlan ID zorunludur');
+      }
+
+      // Önce ilanı al - mahalle bilgisi için
+      const post = await this.postService.getPost(id);
+      
+      // Benzer ilanları getir
+      const relatedPosts = await this.postService.getRelatedPosts(id, post.neighborhood_id, limit);
+
+      res.status(200).json({ posts: relatedPosts });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Kullanıcının kendi ilanlarını getir
    * GET /api/posts/my
    */

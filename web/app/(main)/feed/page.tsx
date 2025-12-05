@@ -4,6 +4,12 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { toast } from "sonner";
 import CreatePostDialog from "./create-post-dialog";
 
@@ -83,24 +89,24 @@ export default function FeedPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Filtreler - URL'den oku
-  const [scope, setScope] = useState<"my" | "all">((searchParams.get("scope") as "my" | "all") || "my");
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "");
+  const urlScope = (searchParams.get("scope") as "my" | "all") || "my";
+  const urlCategory = searchParams.get("category") || "";
+  const urlCity = searchParams.get("city") ? Number(searchParams.get("city")) : null;
+  const urlDistrict = searchParams.get("district") ? Number(searchParams.get("district")) : null;
+  const urlNeighborhood = searchParams.get("neighborhood") ? Number(searchParams.get("neighborhood")) : null;
+  const urlNew = searchParams.get("new") === "true";
+
+  const [scope, setScope] = useState<"my" | "all">(urlScope);
+  const [selectedCategory, setSelectedCategory] = useState(urlCategory);
   const [cities, setCities] = useState<City[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
-  const [selectedCity, setSelectedCity] = useState<number | null>(
-    searchParams.get("city") ? Number(searchParams.get("city")) : null
-  );
-  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(
-    searchParams.get("district") ? Number(searchParams.get("district")) : null
-  );
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<number | null>(
-    searchParams.get("neighborhood") ? Number(searchParams.get("neighborhood")) : null
-  );
+  const [selectedCity, setSelectedCity] = useState<number | null>(urlCity);
+  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(urlDistrict);
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState<number | null>(urlNeighborhood);
   const [showFilters, setShowFilters] = useState(
     !!(searchParams.get("category") || searchParams.get("city"))
   );
-  const [showMenu, setShowMenu] = useState(false);
 
   // Infinite scroll
   const [page, setPage] = useState(1);
@@ -124,6 +130,26 @@ export default function FeedPage() {
 
     router.replace(`/feed?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
+
+  // URL değiştiğinde state'leri güncelle
+  useEffect(() => {
+    setScope(urlScope);
+    setSelectedCategory(urlCategory);
+    setSelectedCity(urlCity);
+    setSelectedDistrict(urlDistrict);
+    setSelectedNeighborhood(urlNeighborhood);
+  }, [urlScope, urlCategory, urlCity, urlDistrict, urlNeighborhood]);
+
+  // URL'den ?new=true gelirse dialog aç
+  useEffect(() => {
+    if (urlNew) {
+      setShowCreateDialog(true);
+      // URL'den new parametresini kaldır
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("new");
+      router.replace(`/feed?${params.toString()}`, { scroll: false });
+    }
+  }, [urlNew, router, searchParams]);
 
   // Sayfa yüklendiğinde
   useEffect(() => {
@@ -285,12 +311,14 @@ export default function FeedPage() {
   }
 
   // İl değiştiğinde ilçeleri getir
+  const prevCityRef = useRef<number | null>(null);
   useEffect(() => {
     if (!selectedCity) {
       setDistricts([]);
       setSelectedDistrict(null);
       setNeighborhoods([]);
       setSelectedNeighborhood(null);
+      prevCityRef.current = null;
       return;
     }
 
@@ -303,16 +331,23 @@ export default function FeedPage() {
     }
 
     fetchDistricts();
+    
+    // Sadece kullanıcı il değiştirdiyse sıfırla (ilk yükleme değilse)
+    if (prevCityRef.current !== null && prevCityRef.current !== selectedCity) {
     setSelectedDistrict(null);
     setNeighborhoods([]);
     setSelectedNeighborhood(null);
+    }
+    prevCityRef.current = selectedCity;
   }, [selectedCity]);
 
   // İlçe değiştiğinde mahalleleri getir
+  const prevDistrictRef = useRef<number | null>(null);
   useEffect(() => {
     if (!selectedDistrict) {
       setNeighborhoods([]);
       setSelectedNeighborhood(null);
+      prevDistrictRef.current = null;
       return;
     }
 
@@ -325,7 +360,12 @@ export default function FeedPage() {
     }
 
     fetchNeighborhoods();
+    
+    // Sadece kullanıcı ilçe değiştirdiyse sıfırla (ilk yükleme değilse)
+    if (prevDistrictRef.current !== null && prevDistrictRef.current !== selectedDistrict) {
     setSelectedNeighborhood(null);
+    }
+    prevDistrictRef.current = selectedDistrict;
   }, [selectedDistrict]);
 
   async function handleDelete(postId: string) {
@@ -346,10 +386,46 @@ export default function FeedPage() {
 
       setPosts(posts.filter((p) => p.id !== postId));
       toast.success("İlan silindi");
-    } catch (error: any) {
-      toast.error(error.message || "Bir hata oluştu");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bir hata oluştu";
+      toast.error(message);
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleShare(e: React.MouseEvent, post: Post) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const url = `${window.location.origin}/post/${post.id}`;
+    const text = `${post.content.slice(0, 100)}${post.content.length > 100 ? "..." : ""}`;
+    const category = CATEGORY_LABELS[post.category];
+    const title = `${category?.emoji || ""} ${category?.label || "İlan"} - Mahalle`;
+
+    // Web Share API destekleniyorsa
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+      } catch (err) {
+        // Kullanıcı paylaşımı iptal ettiyse sessizce geç
+        if ((err as Error).name !== "AbortError") {
+          // Fallback: Kopyala
+          await copyToClipboard(url);
+        }
+      }
+    } else {
+      // Fallback: Kopyala
+      await copyToClipboard(url);
+    }
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Link kopyalandı!");
+    } catch {
+      toast.error("Link kopyalanamadı");
     }
   }
 
@@ -394,136 +470,107 @@ export default function FeedPage() {
     );
   }
 
+  const activeFilterCount = [selectedCategory, selectedCity, selectedDistrict, selectedNeighborhood].filter(Boolean).length;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header - Minimal */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-xl mx-auto px-4">
-          {/* Top Bar */}
           <div className="flex items-center justify-between h-12">
-            <span className="text-lg font-semibold">mahalle</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-3 py-1.5 rounded-lg text-sm ${showFilters ? 'bg-muted' : 'hover:bg-muted'}`}
-              >
-                Filtre
-              </button>
-              
-              {/* Profil Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium"
-                >
-                  {profile?.first_name?.charAt(0) || "?"}
-                </button>
-                
-                {showMenu && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                    <div className="absolute right-0 top-10 z-50 w-48 bg-background border border-border rounded-lg shadow-lg py-1">
-                      <div className="px-3 py-2 border-b border-border">
-                        <p className="font-medium text-sm">{profile?.first_name} {profile?.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{profile?.neighborhood?.name}</p>
-                      </div>
-                      <Link
-                        href="/my-posts"
-                        className="block px-3 py-2 text-sm hover:bg-muted"
-                        onClick={() => setShowMenu(false)}
-                      >
-                        📝 İlanlarım
-                      </Link>
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          handleLogout();
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-muted"
-                      >
-                        Çıkış Yap
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-border">
+            <span className="text-sm font-medium">
+              {scope === "my" ? (profile?.neighborhood?.name || "Mahallem") : "Keşfet"}
+            </span>
             <button
-              onClick={() => setScope("my")}
-              className={`flex-1 py-3 text-sm font-medium border-b-2 ${
-                scope === "my"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
+              onClick={() => setShowFilters(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm hover:bg-muted"
             >
-              📍 {profile?.neighborhood?.name || "Mahallem"}
-            </button>
-            <button
-              onClick={() => setScope("all")}
-              className={`flex-1 py-3 text-sm font-medium border-b-2 ${
-                scope === "all"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              🌍 Keşfet
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {activeFilterCount > 0 && (
+                <span className="w-5 h-5 flex items-center justify-center text-xs bg-primary text-primary-foreground rounded-full">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
+        </div>
+      </header>
 
-          {/* Filters */}
-          {showFilters && (
-            <div className="py-2 border-b border-border space-y-2">
-              {/* Satır 1: Kategori + İl (yan yana) */}
-              <div className="flex gap-2">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
-                >
+      {/* Filter Drawer */}
+      <Drawer open={showFilters} onOpenChange={setShowFilters} noBodyStyles>
+        <DrawerContent className="max-h-[70vh]">
+          <div className="mx-auto w-full max-w-md">
+            <DrawerHeader className="pb-2">
+              <DrawerTitle className="text-base">Filtreler</DrawerTitle>
+            </DrawerHeader>
+
+            <div className="px-4 pb-6 space-y-5">
+              {/* Kategori */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Kategori</label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setSelectedCategory("")}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      !selectedCategory ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                    }`}
+                  >
+                    Tümü
+                  </button>
                   {CATEGORIES.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.emoji} {cat.label}
-                    </option>
+                    <button
+                      key={cat.value}
+                      onClick={() => setSelectedCategory(cat.value)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        selectedCategory === cat.value ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                      }`}
+                    >
+                      <span className="mr-1">{cat.emoji}</span>
+                      {cat.label}
+                    </button>
                   ))}
-                </select>
+                </div>
+              </div>
 
-                {scope === "all" && (
+              {/* Konum (sadece Keşfet modunda) */}
+              {scope === "all" && (
+                <div className="space-y-3">
+                  <label className="text-xs font-medium text-muted-foreground">Konum</label>
+                  
+                  {/* İl */}
                   <select
                     value={selectedCity || ""}
                     onChange={(e) => setSelectedCity(e.target.value ? Number(e.target.value) : null)}
-                    className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
+                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                   >
                     <option value="">Tüm İller</option>
                     {cities.map((city) => (
                       <option key={city.id} value={city.id}>{city.name}</option>
                     ))}
                   </select>
-                )}
-              </div>
 
-              {/* Satır 2: İlçe + Mahalle (il seçiliyse) */}
-              {scope === "all" && selectedCity && (
-                <div className="flex gap-2">
-                  <select
-                    value={selectedDistrict || ""}
-                    onChange={(e) => setSelectedDistrict(e.target.value ? Number(e.target.value) : null)}
-                    className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
-                  >
-                    <option value="">Tüm İlçeler</option>
-                    {districts.map((district) => (
-                      <option key={district.id} value={district.id}>{district.name}</option>
-                    ))}
-                  </select>
+                  {/* İlçe */}
+                  {selectedCity && (
+                    <select
+                      value={selectedDistrict || ""}
+                      onChange={(e) => setSelectedDistrict(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="">Tüm İlçeler</option>
+                      {districts.map((district) => (
+                        <option key={district.id} value={district.id}>{district.name}</option>
+                      ))}
+                    </select>
+                  )}
 
+                  {/* Mahalle */}
                   {selectedDistrict && (
                     <select
                       value={selectedNeighborhood || ""}
                       onChange={(e) => setSelectedNeighborhood(e.target.value ? Number(e.target.value) : null)}
-                      className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
+                      className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                     >
                       <option value="">Tüm Mahalleler</option>
                       {neighborhoods.map((n) => (
@@ -534,32 +581,40 @@ export default function FeedPage() {
                 </div>
               )}
 
-              {/* Aktif Filtreler */}
-              {(selectedCategory || selectedCity) && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedCategory && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded">
-                      {CATEGORIES.find(c => c.value === selectedCategory)?.emoji} {CATEGORIES.find(c => c.value === selectedCategory)?.label}
-                      <button onClick={() => setSelectedCategory("")} className="hover:text-primary/70">×</button>
-                    </span>
-                  )}
-                  {selectedCity && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded">
-                      {cities.find(c => c.id === selectedCity)?.name}
-                      {selectedDistrict && ` > ${districts.find(d => d.id === selectedDistrict)?.name}`}
-                      {selectedNeighborhood && ` > ${neighborhoods.find(n => n.id === selectedNeighborhood)?.name}`}
-                      <button onClick={() => { setSelectedCity(null); setSelectedDistrict(null); setSelectedNeighborhood(null); }} className="hover:text-primary/70">×</button>
-                    </span>
-                  )}
+              {/* Aktif filtreler özeti */}
+              {activeFilterCount > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{activeFilterCount} filtre aktif</span>
+                    <button
+                      onClick={() => {
+                        setSelectedCategory("");
+                        setSelectedCity(null);
+                        setSelectedDistrict(null);
+                        setSelectedNeighborhood(null);
+                      }}
+                      className="text-xs text-destructive hover:underline"
+                    >
+                      Tümünü Temizle
+                    </button>
+                  </div>
                 </div>
               )}
+
+              {/* Uygula butonu */}
+              <Button
+                onClick={() => setShowFilters(false)}
+                className="w-full h-10 rounded-lg"
+              >
+                Uygula
+              </Button>
             </div>
-          )}
-        </div>
-      </header>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Content */}
-      <main className="max-w-xl mx-auto pb-20">
+      <main className="max-w-xl mx-auto pb-24">
         {/* Posts */}
         {fetching ? (
           <div className="flex justify-center py-16">
@@ -619,18 +674,37 @@ export default function FeedPage() {
                             {category.emoji} {category.label}
                           </span>
                           
-                          {post.user.id === profile?.id && (
+                          <div className="flex items-center gap-3">
+                            {/* Paylaş */}
                             <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleDelete(post.id);
-                              }}
-                              disabled={deletingId === post.id}
-                              className="text-xs text-muted-foreground hover:text-destructive"
+                              onClick={(e) => handleShare(e, post)}
+                              className="text-muted-foreground hover:text-foreground"
                             >
-                              {deletingId === post.id ? "..." : "Sil"}
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                              </svg>
                             </button>
-                          )}
+                            
+                            {/* Sil (sadece kendi ilanları) */}
+                            {post.user.id === profile?.id && (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDelete(post.id);
+                                }}
+                                disabled={deletingId === post.id}
+                                className="text-muted-foreground hover:text-destructive"
+                              >
+                                {deletingId === post.id ? (
+                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -655,14 +729,6 @@ export default function FeedPage() {
           </div>
         )}
       </main>
-
-      {/* FAB */}
-      <button
-        onClick={() => setShowCreateDialog(true)}
-        className="fixed bottom-5 right-5 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl"
-      >
-        +
-      </button>
 
       {/* Create Post Dialog */}
       <CreatePostDialog

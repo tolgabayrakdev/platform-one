@@ -116,7 +116,41 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Her zaman scroll göster - layout shift önlenir */
+    overflow-y: scroll !important;
+  }
   body {
     @apply bg-background text-foreground;
+    /* Drawer/modal açıkken de scroll kalsın */
+    overflow-y: visible !important;
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* Vaul drawer body style override */
+  body[vaul-drawer-wrapper] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* Webkit - ince ve şeffaf scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.6 0 0 / 20%);
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0 0 / 40%);
+  }
+  /* Firefox - ince scrollbar */
+  @supports (scrollbar-width: thin) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: oklch(0.6 0 0 / 20%) transparent;
+    }
   }
 }

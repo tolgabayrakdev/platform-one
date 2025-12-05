@@ -1,0 +1,177 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { toast } from "sonner";
+
+interface CreatePostDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+const CATEGORIES = [
+  { value: "kayip", label: "Kayıp / Bulundu", emoji: "🔍" },
+  { value: "yardim", label: "Yardım", emoji: "🤝" },
+  { value: "etkinlik", label: "Etkinlik", emoji: "🎉" },
+  { value: "ucretsiz", label: "Ücretsiz Eşya", emoji: "🎁" },
+  { value: "soru", label: "Soru / Bilgi", emoji: "❓" },
+];
+
+export default function CreatePostDialog({ open, onClose, onCreated }: CreatePostDialogProps) {
+  const [category, setCategory] = useState("");
+  const [content, setContent] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Drawer kapandığında formu temizle
+  useEffect(() => {
+    if (!open) {
+      setCategory("");
+      setContent("");
+    }
+  }, [open]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!category) {
+      toast.error("Lütfen kategori seçin");
+      return;
+    }
+
+    if (!content || content.trim().length < 10) {
+      toast.error("İlan içeriği en az 10 karakter olmalıdır");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ category, content: content.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "İlan oluşturulamadı");
+      }
+
+      toast.success("İlan paylaşıldı!");
+      onCreated();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bir hata oluştu";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Drawer 
+      open={open} 
+      onOpenChange={(isOpen) => !isOpen && !saving && onClose()}
+      noBodyStyles
+    >
+      <DrawerContent className="max-h-[85vh]">
+        <div className="mx-auto w-full max-w-md">
+          <DrawerHeader className="pb-2">
+            <DrawerTitle className="text-base">Yeni İlan</DrawerTitle>
+          </DrawerHeader>
+
+        {/* Form */}
+          <form onSubmit={handleSubmit} className="px-4 pb-6 space-y-4">
+          {/* Kategori Seçimi */}
+          <div className="space-y-2">
+              <label className="block text-xs font-medium text-muted-foreground">Kategori</label>
+              <div className="flex flex-wrap gap-1.5">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setCategory(cat.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    category === cat.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80"
+                  }`}
+                >
+                    <span className="mr-1">{cat.emoji}</span>
+                    {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* İçerik */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-medium text-muted-foreground">İçerik</label>
+                <span className={`text-xs font-medium ${
+                  content.length >= 500 
+                    ? "text-destructive" 
+                    : content.length >= 450 
+                      ? "text-yellow-600" 
+                      : "text-muted-foreground"
+                }`}>
+                  {content.length}/500
+                  {content.length >= 500 && " (limit)"}
+              </span>
+              </div>
+            <textarea
+              value={content}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.length <= 500) {
+                    setContent(value);
+                  }
+                }}
+                placeholder="Mahallenle paylaşmak istediğin şeyi yaz..."
+              rows={4}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 resize-none transition-colors ${
+                  content.length >= 500 
+                    ? "border-destructive focus:ring-destructive" 
+                    : "border-input focus:ring-ring"
+                }`}
+              />
+              {content.length >= 450 && content.length < 500 && (
+                <p className="text-xs text-yellow-600">⚠️ Karakter sınırına yaklaşıyorsunuz</p>
+              )}
+              {content.length >= 500 && (
+                <p className="text-xs text-destructive">⛔ Maksimum 500 karakter girebilirsiniz</p>
+              )}
+          </div>
+
+          {/* Buttons */}
+            <div className="flex gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={saving}
+                className="flex-1 h-10 rounded-lg text-sm"
+              >
+              İptal
+            </Button>
+              <Button
+                type="submit"
+                disabled={saving || !category || content.trim().length < 10}
+                className="flex-1 h-10 rounded-lg text-sm"
+              >
+              {saving ? "Paylaşılıyor..." : "Paylaş"}
+            </Button>
+          </div>
+        </form>
+      </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
