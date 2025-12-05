@@ -70,7 +70,7 @@ export default class AuthService {
 
       // Kullanıcıyı bul
       const userResult = await client.query(
-        'SELECT id, email_verify_token, email_verify_token_created_at, phone FROM users WHERE email = $1',
+        'SELECT id, email_verify_token, email_verify_token_created_at, phone, email_verified FROM users WHERE email = $1',
         [email]
       );
 

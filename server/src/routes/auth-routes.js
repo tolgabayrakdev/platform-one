@@ -1,17 +1,18 @@
 import express from 'express';
 import AuthController from '../controller/auth-controller.js';
 import { authenticateToken } from '../middleware/auth-middleware.js';
+import { authLimiter, codeLimiter, verifyLimiter } from '../middleware/rate-limiter.js';
 
 const router = express.Router();
 const authController = new AuthController();
 
 // Public routes
-router.post('/register', authController.register.bind(authController));
-router.post('/verify-email', authController.verifyEmail.bind(authController));
-router.post('/verify-phone', authController.verifyPhone.bind(authController));
-router.post('/resend-email-code', authController.resendEmailCode.bind(authController));
-router.post('/resend-phone-code', authController.resendPhoneCode.bind(authController));
-router.post('/login', authController.login.bind(authController));
+router.post('/register', authLimiter, authController.register.bind(authController));
+router.post('/verify-email', verifyLimiter, authController.verifyEmail.bind(authController));
+router.post('/verify-phone', verifyLimiter, authController.verifyPhone.bind(authController));
+router.post('/resend-email-code', codeLimiter, authController.resendEmailCode.bind(authController));
+router.post('/resend-phone-code', codeLimiter, authController.resendPhoneCode.bind(authController));
+router.post('/login', authLimiter, authController.login.bind(authController));
 
 // Protected routes
 router.get('/me', authenticateToken, authController.me.bind(authController));

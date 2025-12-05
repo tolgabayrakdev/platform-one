@@ -9,7 +9,7 @@ export const verifyToken = (req, res, next) => {
     const token = req.cookies.access_token || req.query.token;
 
     if (token) {
-      jwt.verify(token, process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || 'your-secret-key', (error, user) => {
+      jwt.verify(token, process.env.JWT_SECRET_KEY || 'your-secret-key', (error, user) => {
         if (error) {
           return res.status(403).json({ message: 'Token geçerli değil!' });
         }

@@ -8,6 +8,7 @@ import pool from './config/database.js';
 import authRoutes from './routes/auth-routes.js';
 import errorHandler from './middleware/error-handler.js';
 import logger from './config/logger.js';
+import { generalLimiter } from './middleware/rate-limiter.js';
 
 const app = express();
 const PORT = process.env.PORT || 1234;
@@ -29,6 +30,9 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+
+// Genel rate limiter - tüm istekler için
+app.use(generalLimiter);
 
 app.use('/api/auth', authRoutes);
 

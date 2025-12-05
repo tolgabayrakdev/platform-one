@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import HttpException from '../exceptions/http-exception.js';
 
-const accessTokenSecret = process.env.JWT_SECRET_KEY || 'your-secret-key-change-in-production';
-const refreshTokenSecret = process.env.JWT_SECRET_KEY || 'your-secret-key-change-in-production';
+const accessTokenSecret = process.env.JWT_SECRET_KEY || 'your-secret-key';
+const refreshTokenSecret = process.env.JWT_SECRET_KEY || 'your-secret-key';
 
 export function generateAccessToken(payload) {
   return jwt.sign(payload, accessTokenSecret, { expiresIn: '6h' });
