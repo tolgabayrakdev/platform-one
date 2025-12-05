@@ -100,11 +100,13 @@ export default function FeedPage() {
   const [showFilters, setShowFilters] = useState(
     !!(searchParams.get("category") || searchParams.get("city"))
   );
+  const [showMenu, setShowMenu] = useState(false);
 
   // Infinite scroll
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [fetching, setFetching] = useState(false); // İlk yükleme için
   const observerRef = useRef<IntersectionObserver | null>(null);
   const initialLoadDone = useRef(false);
 
@@ -232,6 +234,7 @@ export default function FeedPage() {
 
   async function fetchPosts(pageNum: number = 1, reset: boolean = false) {
     if (reset) {
+      setFetching(true);
       setLoadingMore(false);
     } else {
       setLoadingMore(true);
@@ -276,6 +279,7 @@ export default function FeedPage() {
     } catch {
       toast.error("İlanlar yüklenemedi");
     } finally {
+      setFetching(false);
       setLoadingMore(false);
     }
   }
@@ -350,6 +354,8 @@ export default function FeedPage() {
   }
 
   async function handleLogout() {
+    if (!confirm("Çıkış yapmak istediğinize emin misiniz?")) return;
+    
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
@@ -396,19 +402,51 @@ export default function FeedPage() {
           {/* Top Bar */}
           <div className="flex items-center justify-between h-12">
             <span className="text-lg font-semibold">mahalle</span>
-            <div className="flex items-center gap-2">
-              <Link href="/my-posts" className="p-2 hover:bg-muted rounded-lg text-sm">
-                İlanlarım
-              </Link>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`p-2 rounded-lg text-sm ${showFilters ? 'bg-muted' : 'hover:bg-muted'}`}
+                className={`px-3 py-1.5 rounded-lg text-sm ${showFilters ? 'bg-muted' : 'hover:bg-muted'}`}
               >
                 Filtre
               </button>
-              <button onClick={handleLogout} className="p-2 hover:bg-muted rounded-lg text-sm text-muted-foreground">
-                Çıkış
-              </button>
+              
+              {/* Profil Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium"
+                >
+                  {profile?.first_name?.charAt(0) || "?"}
+                </button>
+                
+                {showMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                    <div className="absolute right-0 top-10 z-50 w-48 bg-background border border-border rounded-lg shadow-lg py-1">
+                      <div className="px-3 py-2 border-b border-border">
+                        <p className="font-medium text-sm">{profile?.first_name} {profile?.last_name}</p>
+                        <p className="text-xs text-muted-foreground">{profile?.neighborhood?.name}</p>
+                      </div>
+                      <Link
+                        href="/my-posts"
+                        className="block px-3 py-2 text-sm hover:bg-muted"
+                        onClick={() => setShowMenu(false)}
+                      >
+                        📝 İlanlarım
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          handleLogout();
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-muted"
+                      >
+                        Çıkış Yap
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -438,88 +476,61 @@ export default function FeedPage() {
 
           {/* Filters */}
           {showFilters && (
-            <div className="py-3 space-y-4 border-b border-border">
-              {/* Kategori */}
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Kategori</p>
-                <div className="relative">
+            <div className="py-2 border-b border-border space-y-2">
+              {/* Satır 1: Kategori + İl (yan yana) */}
+              <div className="flex gap-2">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.emoji} {cat.label}
+                    </option>
+                  ))}
+                </select>
+
+                {scope === "all" && (
                   <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full appearance-none px-3 py-2.5 pr-8 text-sm rounded-lg border border-border bg-background cursor-pointer hover:border-primary/50 focus:border-primary focus:outline-none"
+                    value={selectedCity || ""}
+                    onChange={(e) => setSelectedCity(e.target.value ? Number(e.target.value) : null)}
+                    className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
                   >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.emoji} {cat.label}
-                      </option>
+                    <option value="">Tüm İller</option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.id}>{city.name}</option>
                     ))}
                   </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                    ▼
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Lokasyon */}
-              {scope === "all" && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Lokasyon</p>
-                  <div className="space-y-2">
-                    {/* İl */}
-                    <div className="relative">
-                      <select
-                        value={selectedCity || ""}
-                        onChange={(e) => setSelectedCity(e.target.value ? Number(e.target.value) : null)}
-                        className="w-full appearance-none px-3 py-2.5 pr-8 text-sm rounded-lg border border-border bg-background cursor-pointer hover:border-primary/50 focus:border-primary focus:outline-none"
-                      >
-                        <option value="">🏙️ Tüm İller</option>
-                        {cities.map((city) => (
-                          <option key={city.id} value={city.id}>{city.name}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        ▼
-                      </div>
-                    </div>
+              {/* Satır 2: İlçe + Mahalle (il seçiliyse) */}
+              {scope === "all" && selectedCity && (
+                <div className="flex gap-2">
+                  <select
+                    value={selectedDistrict || ""}
+                    onChange={(e) => setSelectedDistrict(e.target.value ? Number(e.target.value) : null)}
+                    className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
+                  >
+                    <option value="">Tüm İlçeler</option>
+                    {districts.map((district) => (
+                      <option key={district.id} value={district.id}>{district.name}</option>
+                    ))}
+                  </select>
 
-                    {/* İlçe */}
-                    {selectedCity && (
-                      <div className="relative">
-                        <select
-                          value={selectedDistrict || ""}
-                          onChange={(e) => setSelectedDistrict(e.target.value ? Number(e.target.value) : null)}
-                          className="w-full appearance-none px-3 py-2.5 pr-8 text-sm rounded-lg border border-border bg-background cursor-pointer hover:border-primary/50 focus:border-primary focus:outline-none"
-                        >
-                          <option value="">🏘️ Tüm İlçeler</option>
-                          {districts.map((district) => (
-                            <option key={district.id} value={district.id}>{district.name}</option>
-                          ))}
-                        </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                          ▼
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Mahalle */}
-                    {selectedDistrict && (
-                      <div className="relative">
-                        <select
-                          value={selectedNeighborhood || ""}
-                          onChange={(e) => setSelectedNeighborhood(e.target.value ? Number(e.target.value) : null)}
-                          className="w-full appearance-none px-3 py-2.5 pr-8 text-sm rounded-lg border border-border bg-background cursor-pointer hover:border-primary/50 focus:border-primary focus:outline-none"
-                        >
-                          <option value="">📍 Tüm Mahalleler</option>
-                          {neighborhoods.map((n) => (
-                            <option key={n.id} value={n.id}>{n.name}</option>
-                          ))}
-                        </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                          ▼
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  {selectedDistrict && (
+                    <select
+                      value={selectedNeighborhood || ""}
+                      onChange={(e) => setSelectedNeighborhood(e.target.value ? Number(e.target.value) : null)}
+                      className="flex-1 appearance-none px-2 py-1.5 pr-6 text-xs rounded border border-border bg-background cursor-pointer focus:outline-none focus:border-primary"
+                    >
+                      <option value="">Tüm Mahalleler</option>
+                      {neighborhoods.map((n) => (
+                        <option key={n.id} value={n.id}>{n.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -550,7 +561,11 @@ export default function FeedPage() {
       {/* Content */}
       <main className="max-w-xl mx-auto pb-20">
         {/* Posts */}
-        {posts.length === 0 && !loadingMore ? (
+        {fetching ? (
+          <div className="flex justify-center py-16">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : posts.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">🏘️</p>
             <p className="text-muted-foreground">Henüz ilan yok</p>
