@@ -332,7 +332,39 @@ export default function FeedPage() {
   }
 
 
-  // Sayfa görünür olduğunda bildirim sayısını güncelle
+  // SSE ile anlık bildirim al
+  useEffect(() => {
+    if (!profile) return;
+
+    const eventSource = new EventSource("/api/notifications/stream");
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'unread_count') {
+          setUnreadNotificationCount(data.count);
+        } else if (data.type === 'new_notification') {
+          setUnreadNotificationCount(data.unread_count);
+          // İsteğe bağlı: Bildirim toast'ı göster
+          // toast.info(data.notification.message);
+        }
+      } catch (error) {
+        console.error('SSE parse error:', error);
+      }
+    };
+
+    eventSource.onerror = () => {
+      // EventSource otomatik olarak yeniden bağlanmaya çalışır
+      // Bağlantı kapalıysa, useEffect dependency değiştiğinde yeniden bağlanır
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [profile]);
+
+  // Sayfa görünür olduğunda bildirim sayısını güncelle (fallback)
   useEffect(() => {
     if (!profile) return;
 
@@ -342,18 +374,16 @@ export default function FeedPage() {
       }
     };
 
+    const handleNotificationRead = () => {
+      fetchUnreadNotificationCount();
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    
-    // Sayfa yüklendiğinde ve her 30 saniyede bir güncelle
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        fetchUnreadNotificationCount();
-      }
-    }, 30000);
+    window.addEventListener("notificationRead", handleNotificationRead);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      clearInterval(interval);
+      window.removeEventListener("notificationRead", handleNotificationRead);
     };
   }, [profile]);
 
@@ -496,7 +526,7 @@ export default function FeedPage() {
         <div className="max-w-xl mx-auto px-4">
           <div className="flex items-center justify-between h-12">
             <span className="text-sm font-medium">
-              {scope === "my" ? (profile?.city?.name || "İlim") : "Keşfet"}
+              {scope === "my" ? (profile?.city?.name || "Anasayfa") : "Keşfet"}
               </span>
             <div className="flex items-center gap-2">
               {/* Bildirimler */}

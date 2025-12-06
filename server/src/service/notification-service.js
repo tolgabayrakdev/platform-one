@@ -106,4 +106,29 @@ export default class NotificationService {
 
     return parseInt(result.rows[0].count);
   }
+
+  /**
+   * Comment ID'ye göre bildirimi okundu olarak işaretle
+   */
+  async markAsReadByCommentId(commentId, userId) {
+    // Bu yorumla ilgili bildirimi bul
+    const notificationResult = await pool.query(
+      'SELECT id, user_id FROM notifications WHERE comment_id = $1 AND user_id = $2 AND is_read = false',
+      [commentId, userId]
+    );
+
+    if (notificationResult.rows.length === 0) {
+      // Bildirim yoksa veya zaten okunmuşsa sessizce geç
+      return { message: 'Bildirim bulunamadı veya zaten okunmuş' };
+    }
+
+    const notificationId = notificationResult.rows[0].id;
+
+    await pool.query(
+      'UPDATE notifications SET is_read = true WHERE id = $1',
+      [notificationId]
+    );
+
+    return { message: 'Bildirim okundu olarak işaretlendi' };
+  }
 }

@@ -109,15 +109,15 @@ BEGIN
                 SELECT name INTO model_name FROM models WHERE id = m_id;
                 
                 FOR j IN 1..10 LOOP
-                    random_category := categories[floor(random() * 5 + 1)];
-                    
+            random_category := categories[floor(random() * 5 + 1)];
+            
                     -- Rastgele yıl, km ve fiyat oluştur
                     year_val := 2015 + floor(random() * 10); -- 2015-2024 arası
                     km_val := 20000 + floor(random() * 100000); -- 20.000-120.000 km arası
                     price_val := 150000 + floor(random() * 400000); -- 150.000-550.000 TL arası
                     
                     -- Kategoriye göre içerik oluştur
-                    CASE random_category
+            CASE random_category
                         WHEN 'satilik' THEN 
                             random_content := format(satilik_template, year_val::TEXT, brand_name || ' ' || model_name, km_val::TEXT);
                         WHEN 'kiralik' THEN 
@@ -128,18 +128,18 @@ BEGIN
                             random_content := aksesuar_icerikler[floor(random() * 10 + 1)];
                         WHEN 'servis' THEN 
                             random_content := servis_icerikler[floor(random() * 10 + 1)];
-                    END CASE;
-                    
+            END CASE;
+            
                     INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content, created_at)
-                    VALUES (
-                        user_ids[floor(random() * 5 + 1)],
+            VALUES (
+                user_ids[floor(random() * 5 + 1)],
                         c_id,
                         b_id,
                         m_id,
-                        random_category,
-                        random_content,
-                        NOW() - (floor(random() * 30) || ' days')::INTERVAL - (floor(random() * 24) || ' hours')::INTERVAL
-                    );
+                random_category,
+                random_content,
+                NOW() - (floor(random() * 30) || ' days')::INTERVAL - (floor(random() * 24) || ' hours')::INTERVAL
+            );
                 END LOOP;
             END LOOP;
         END LOOP;

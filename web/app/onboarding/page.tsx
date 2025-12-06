@@ -219,21 +219,21 @@ export default function OnboardingPage() {
 
           {/* Model Seçimi */}
           {selectedBrand && (
-            <div className="space-y-2">
+          <div className="space-y-2">
               <label className="block text-sm font-medium">Model</label>
-              <select
+            <select
                 value={selectedModel || ""}
                 onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
                 className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
+            >
                 <option value="">Model seçin</option>
                 {models.map((model) => (
                   <option key={model.id} value={model.id}>
                     {model.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                </option>
+              ))}
+            </select>
+          </div>
           )}
 
           <Button

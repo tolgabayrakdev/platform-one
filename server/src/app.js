@@ -26,7 +26,7 @@ const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true, // Cookie'ler için gerekli
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 };
 
@@ -36,8 +36,14 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Genel rate limiter - tüm istekler için
-app.use(generalLimiter);
+// Genel rate limiter - SSE endpoint'i hariç
+app.use((req, res, next) => {
+  // SSE endpoint'i rate limiter'dan muaf (uzun süreli bağlantı)
+  if (req.path === '/api/notifications/stream') {
+    return next();
+  }
+  generalLimiter(req, res, next);
+});
 
 // Routes
 app.use('/api/auth', authRoutes);

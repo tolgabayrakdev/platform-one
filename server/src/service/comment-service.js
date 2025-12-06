@@ -1,5 +1,6 @@
 import pool from '../config/database.js';
 import HttpException from '../exceptions/http-exception.js';
+import notificationManager from './notification-manager.js';
 
 export default class CommentService {
   /**
@@ -79,6 +80,21 @@ export default class CommentService {
                VALUES ($1, 'comment', $2, $3, $4)`,
               [parentCommentOwnerId, postId, comment.id, message]
             );
+            
+            // SSE ile anlık bildirim gönder
+            const unreadCount = await pool.query(
+              'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+              [parentCommentOwnerId]
+            );
+            notificationManager.sendNotification(parentCommentOwnerId, {
+              type: 'new_notification',
+              notification: {
+                message,
+                post_id: postId,
+                comment_id: comment.id
+              },
+              unread_count: parseInt(unreadCount.rows[0].count)
+            });
           }
         }
       } else {

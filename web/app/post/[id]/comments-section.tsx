@@ -265,6 +265,19 @@ export default function CommentsSection({ postId, isAuthenticated, postOwnerId }
     }
   }, [postId, isAuthenticated]);
 
+  // Bildirim sayısını güncellemek için window event listener
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const updateNotificationCount = () => {
+      // Feed sayfasındaki bildirim sayısını güncelle
+      window.dispatchEvent(new CustomEvent('updateNotificationCount'));
+    };
+
+    window.addEventListener('notificationRead', updateNotificationCount);
+    return () => window.removeEventListener('notificationRead', updateNotificationCount);
+  }, [isAuthenticated]);
+
   async function fetchCurrentUser() {
     try {
       const res = await fetch("/api/users/profile", {
@@ -287,11 +300,46 @@ export default function CommentsSection({ postId, isAuthenticated, postOwnerId }
       if (res.ok) {
         const data = await res.json();
         setComments(data.comments || []);
+        
+        // Tüm yorumları ve reply'leri düzleştir ve bildirimleri okundu olarak işaretle
+        if (isAuthenticated) {
+          const allCommentIds: string[] = [];
+          function collectCommentIds(commentList: Comment[]) {
+            commentList.forEach((comment) => {
+              allCommentIds.push(comment.id);
+              if (comment.replies && comment.replies.length > 0) {
+                collectCommentIds(comment.replies);
+              }
+            });
+          }
+          collectCommentIds(data.comments || []);
+          
+          // Her yorum için bildirimi okundu olarak işaretle
+          allCommentIds.forEach((commentId) => {
+            markNotificationAsRead(commentId);
+          });
+        }
       }
     } catch {
       toast.error("Yorumlar yüklenemedi");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function markNotificationAsRead(commentId: string) {
+    try {
+      const res = await fetch(`/api/notifications/comment/${commentId}/read`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      
+      if (res.ok) {
+        // Bildirim sayısını güncelle
+        window.dispatchEvent(new CustomEvent('notificationRead'));
+      }
+    } catch {
+      // Hata yok say
     }
   }
 

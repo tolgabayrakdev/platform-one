@@ -208,7 +208,7 @@ export default function MyPostsPage() {
                       {post.vehicle && (
                         <p className="text-xs text-muted-foreground">
                           🚗 {post.vehicle.brand} {post.vehicle.model}
-                        </p>
+                    </p>
                       )}
                     </div>
 
