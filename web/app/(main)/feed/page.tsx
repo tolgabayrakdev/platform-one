@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -33,6 +34,7 @@ interface Post {
   category: string;
   content: string;
   created_at: string;
+  comment_count?: number;
   user: User;
   location: Location;
   vehicle: Vehicle;
@@ -89,6 +91,7 @@ export default function FeedPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   // Filtreler - URL'den oku
   const urlScope = (searchParams.get("scope") as "my" | "all") || "my";
@@ -207,6 +210,20 @@ export default function FeedPage() {
     }
   }, [page]);
 
+  async function fetchUnreadNotificationCount() {
+    try {
+      const res = await fetch("/api/notifications/unread-count", {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadNotificationCount(data.unread_count || 0);
+      }
+    } catch {
+      // Hata yok say
+    }
+  }
+
   async function fetchProfile() {
     try {
       const profileRes = await fetch("/api/users/profile", {
@@ -226,6 +243,9 @@ export default function FeedPage() {
       }
 
       setProfile(profileData.profile);
+      
+      // Bildirim sayısını al
+      fetchUnreadNotificationCount();
 
       // İlleri al
       const citiesRes = await fetch("/api/locations/cities");
@@ -311,6 +331,31 @@ export default function FeedPage() {
     }
   }
 
+
+  // Sayfa görünür olduğunda bildirim sayısını güncelle
+  useEffect(() => {
+    if (!profile) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchUnreadNotificationCount();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    // Sayfa yüklendiğinde ve her 30 saniyede bir güncelle
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchUnreadNotificationCount();
+      }
+    }, 30000);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(interval);
+    };
+  }, [profile]);
 
   // Marka değiştiğinde modelleri getir
   const prevBrandRef = useRef<number | null>(null);
@@ -453,19 +498,37 @@ export default function FeedPage() {
             <span className="text-sm font-medium">
               {scope === "my" ? (profile?.city?.name || "İlim") : "Keşfet"}
               </span>
-            <button
-              onClick={() => setShowFilters(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm hover:bg-muted"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              {activeFilterCount > 0 && (
-                <span className="w-5 h-5 flex items-center justify-center text-xs bg-primary text-primary-foreground rounded-full">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Bildirimler */}
+              <Link
+                href="/notifications"
+                className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
+                    {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                  </span>
+                )}
+              </Link>
+              
+              {/* Filtreler */}
+              <button
+                onClick={() => setShowFilters(true)}
+                className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
+                    {activeFilterCount > 9 ? "9+" : activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -651,9 +714,19 @@ export default function FeedPage() {
 
                         {/* Category + Actions */}
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
-                            {category.emoji} {category.label}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
+                              {category.emoji} {category.label}
+                            </span>
+                            {post.comment_count !== undefined && post.comment_count > 0 && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                {post.comment_count}
+                              </span>
+                            )}
+                          </div>
                           
                           <div className="flex items-center gap-3">
                             {/* Paylaş */}

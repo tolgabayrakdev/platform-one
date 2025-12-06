@@ -50,13 +50,16 @@ export default class PostService {
         u.last_name,
         c.name as city_name,
         b.name as brand_name,
-        m.name as model_name
+        m.name as model_name,
+        COALESCE(COUNT(cm.id), 0)::INTEGER as comment_count
       FROM posts p
       JOIN users u ON p.user_id = u.id
       JOIN cities c ON p.city_id = c.id
       JOIN brands b ON p.brand_id = b.id
       JOIN models m ON p.model_id = m.id
+      LEFT JOIN comments cm ON p.id = cm.post_id
       ${whereClause}
+      GROUP BY p.id, u.id, u.first_name, u.last_name, c.name, b.name, m.name
       ORDER BY p.created_at DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
       [...params, limit, offset]
@@ -79,6 +82,7 @@ export default class PostService {
         category: post.category,
         content: post.content,
         created_at: post.created_at,
+        comment_count: post.comment_count || 0,
         user: {
           id: post.user_id,
           first_name: post.first_name,
@@ -163,12 +167,15 @@ export default class PostService {
         p.created_at,
         c.name as city_name,
         b.name as brand_name,
-        m.name as model_name
+        m.name as model_name,
+        COALESCE(COUNT(cm.id), 0)::INTEGER as comment_count
       FROM posts p
       JOIN cities c ON p.city_id = c.id
       JOIN brands b ON p.brand_id = b.id
       JOIN models m ON p.model_id = m.id
+      LEFT JOIN comments cm ON p.id = cm.post_id
       WHERE p.user_id = $1
+      GROUP BY p.id, c.name, b.name, m.name
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
@@ -184,6 +191,7 @@ export default class PostService {
         category: post.category,
         content: post.content,
         created_at: post.created_at,
+        comment_count: post.comment_count || 0,
         location: {
           city: post.city_name
         },

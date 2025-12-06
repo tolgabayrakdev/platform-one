@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import BackButton from "./back-button";
 import ShareButton from "./share-button";
+import CommentsSection from "./comments-section";
 
 interface Post {
   id: string;
@@ -199,6 +200,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
             />
           </div>
         </article>
+
+        {/* Yorumlar */}
+        <CommentsSection postId={post.id} isAuthenticated={loggedIn} postOwnerId={post.user.id} />
 
         {/* Benzer Araçlar - Benzer Gönderiler */}
         {relatedPosts.length > 0 && (
