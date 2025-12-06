@@ -5,9 +5,12 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 interface Location {
-  neighborhood: string;
-  district: string;
   city: string;
+}
+
+interface Vehicle {
+  brand: string;
+  model: string;
 }
 
 interface Post {
@@ -16,6 +19,7 @@ interface Post {
   content: string;
   created_at: string;
   location: Location;
+  vehicle: Vehicle;
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
@@ -74,7 +78,7 @@ export default function MyPostsPage() {
           window.location.href = "/sign-in";
           return;
         }
-        throw new Error("İlanlar yüklenemedi");
+        throw new Error("Gönderiler yüklenemedi");
       }
 
       const data = await res.json();
@@ -87,7 +91,7 @@ export default function MyPostsPage() {
       
       setHasMore(data.pagination.page < data.pagination.totalPages);
     } catch {
-      toast.error("İlanlar yüklenemedi");
+      toast.error("Gönderiler yüklenemedi");
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -95,7 +99,7 @@ export default function MyPostsPage() {
   }
 
   async function handleDelete(postId: string) {
-    if (!confirm("Bu ilanı silmek istediğinize emin misiniz?")) return;
+    if (!confirm("Bu gönderiyi silmek istediğinize emin misiniz?")) return;
 
     setDeletingId(postId);
 
@@ -107,13 +111,13 @@ export default function MyPostsPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "İlan silinemedi");
+        throw new Error(data.message || "Gönderi silinemedi");
       }
 
-      toast.success("İlan silindi");
+      toast.success("Gönderi silindi");
       setPosts((prev) => prev.filter((p) => p.id !== postId));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "İlan silinemedi");
+      toast.error(error instanceof Error ? error.message : "Gönderi silinemedi");
     } finally {
       setDeletingId(null);
     }
@@ -148,9 +152,9 @@ export default function MyPostsPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-xl mx-auto px-4 h-12 flex items-center justify-between">
-            <span className="font-semibold">İlanlarım</span>
+            <span className="font-semibold">Gönderilerim</span>
           <span className="text-sm text-muted-foreground">
-            {posts.length} ilan
+            {posts.length} gönderi
           </span>
         </div>
       </header>
@@ -160,9 +164,9 @@ export default function MyPostsPage() {
         {posts.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">📭</p>
-            <p className="text-muted-foreground mb-4">Henüz ilan paylaşmadınız</p>
+            <p className="text-muted-foreground mb-4">Henüz gönderi paylaşmadınız</p>
             <Link href="/feed" className="text-primary hover:underline">
-              İlan Paylaş →
+              Gönderi Paylaş →
             </Link>
           </div>
         ) : (
@@ -196,10 +200,17 @@ export default function MyPostsPage() {
                     {/* Content */}
                     <p className="text-sm whitespace-pre-wrap mb-2">{post.content}</p>
 
-                    {/* Location */}
-                    <p className="text-xs text-muted-foreground mb-3">
-                      📍 {post.location.neighborhood}, {post.location.district}
-                    </p>
+                    {/* Location & Vehicle */}
+                    <div className="space-y-1 mb-3">
+                      <p className="text-xs text-muted-foreground">
+                        📍 {post.location.city}
+                      </p>
+                      {post.vehicle && (
+                        <p className="text-xs text-muted-foreground">
+                          🚗 {post.vehicle.brand} {post.vehicle.model}
+                        </p>
+                      )}
+                    </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-3 text-sm">
@@ -229,7 +240,7 @@ export default function MyPostsPage() {
             {/* End */}
             {!hasMore && posts.length > 0 && (
               <p className="text-center text-sm text-muted-foreground py-6">
-                Tüm ilanlarınızı gördünüz
+                Tüm gönderilerinizi gördünüz
               </p>
             )}
           </div>

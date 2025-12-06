@@ -7,6 +7,7 @@ const userController = new UserController();
 
 // Protected routes - auth gerekli
 router.get('/profile', authenticateToken, userController.getProfile.bind(userController));
-router.put('/neighborhood', authenticateToken, userController.updateNeighborhood.bind(userController));
+router.put('/city', authenticateToken, userController.updateCity.bind(userController));
+router.put('/vehicle', authenticateToken, userController.updateVehicle.bind(userController));
 
 export default router;

@@ -7,26 +7,58 @@ export default class UserController {
   }
 
   /**
-   * Kullanıcının mahallesini güncelle
-   * PUT /api/users/neighborhood
+   * Kullanıcının ilini güncelle
+   * PUT /api/users/city
    */
-  async updateNeighborhood(req, res, next) {
+  async updateCity(req, res, next) {
     try {
       const userId = req.user?.userId;
-      const { neighborhoodId } = req.body;
+      const { cityId } = req.body;
 
       if (!userId) {
         throw new HttpException(401, 'Yetkilendirme gerekli');
       }
 
-      if (!neighborhoodId) {
-        throw new HttpException(400, 'Mahalle ID zorunludur');
+      if (!cityId) {
+        throw new HttpException(400, 'İl ID zorunludur');
       }
 
-      const user = await this.userService.updateNeighborhood(userId, neighborhoodId);
+      const user = await this.userService.updateCity(userId, cityId);
 
       res.status(200).json({
-        message: 'Mahalle güncellendi',
+        message: 'İl güncellendi',
+        user
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Kullanıcının araç bilgisini güncelle
+   * PUT /api/users/vehicle
+   */
+  async updateVehicle(req, res, next) {
+    try {
+      const userId = req.user?.userId;
+      const { brandId, modelId } = req.body;
+
+      if (!userId) {
+        throw new HttpException(401, 'Yetkilendirme gerekli');
+      }
+
+      if (!brandId) {
+        throw new HttpException(400, 'Marka ID zorunludur');
+      }
+
+      if (!modelId) {
+        throw new HttpException(400, 'Model ID zorunludur');
+      }
+
+      const user = await this.userService.updateVehicle(userId, brandId, modelId);
+
+      res.status(200).json({
+        message: 'Araç bilgisi güncellendi',
         user
       });
     } catch (error) {

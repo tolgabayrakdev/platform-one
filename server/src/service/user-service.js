@@ -3,26 +3,26 @@ import HttpException from '../exceptions/http-exception.js';
 
 export default class UserService {
   /**
-   * Kullanıcının mahallesini güncelle
+   * Kullanıcının ilini güncelle
    */
-  async updateNeighborhood(userId, neighborhoodId) {
-    // Mahalle var mı kontrol et
-    const neighborhoodCheck = await pool.query(
-      'SELECT id FROM neighborhoods WHERE id = $1',
-      [neighborhoodId]
+  async updateCity(userId, cityId) {
+    // İl var mı kontrol et
+    const cityCheck = await pool.query(
+      'SELECT id FROM cities WHERE id = $1',
+      [cityId]
     );
 
-    if (neighborhoodCheck.rows.length === 0) {
-      throw new HttpException(404, 'Mahalle bulunamadı');
+    if (cityCheck.rows.length === 0) {
+      throw new HttpException(404, 'İl bulunamadı');
     }
 
-    // Kullanıcının mahallesini güncelle
+    // Kullanıcının ilini güncelle
     const result = await pool.query(
       `UPDATE users 
-       SET neighborhood_id = $1, updated_at = NOW() 
+       SET city_id = $1, updated_at = NOW() 
        WHERE id = $2 
-       RETURNING id, first_name, last_name, email, neighborhood_id`,
-      [neighborhoodId, userId]
+       RETURNING id, first_name, last_name, email, city_id`,
+      [cityId, userId]
     );
 
     if (result.rows.length === 0) {
@@ -33,7 +33,39 @@ export default class UserService {
   }
 
   /**
-   * Kullanıcı profilini getir (mahalle bilgisi dahil)
+   * Kullanıcının araç bilgisini güncelle
+   */
+  async updateVehicle(userId, brandId, modelId) {
+    // Marka ve model var mı kontrol et
+    const brandCheck = await pool.query('SELECT id FROM brands WHERE id = $1', [brandId]);
+    const modelCheck = await pool.query('SELECT id FROM models WHERE id = $1 AND brand_id = $2', [modelId, brandId]);
+
+    if (brandCheck.rows.length === 0) {
+      throw new HttpException(404, 'Marka bulunamadı');
+    }
+
+    if (modelCheck.rows.length === 0) {
+      throw new HttpException(404, 'Model bulunamadı veya bu markaya ait değil');
+    }
+
+    // Kullanıcının araç bilgisini güncelle
+    const result = await pool.query(
+      `UPDATE users 
+       SET brand_id = $1, model_id = $2, updated_at = NOW() 
+       WHERE id = $3 
+       RETURNING id, first_name, last_name, email, brand_id, model_id`,
+      [brandId, modelId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new HttpException(404, 'Kullanıcı bulunamadı');
+    }
+
+    return result.rows[0];
+  }
+
+  /**
+   * Kullanıcı profilini getir (il ve araç bilgisi dahil)
    */
   async getProfile(userId) {
     const result = await pool.query(
@@ -43,16 +75,16 @@ export default class UserService {
         u.last_name,
         u.email,
         u.phone,
-        u.neighborhood_id,
-        n.name as neighborhood_name,
-        d.id as district_id,
-        d.name as district_name,
-        c.id as city_id,
-        c.name as city_name
+        u.city_id,
+        c.name as city_name,
+        u.brand_id,
+        b.name as brand_name,
+        u.model_id,
+        m.name as model_name
       FROM users u
-      LEFT JOIN neighborhoods n ON u.neighborhood_id = n.id
-      LEFT JOIN districts d ON n.district_id = d.id
-      LEFT JOIN cities c ON d.city_id = c.id
+      LEFT JOIN cities c ON u.city_id = c.id
+      LEFT JOIN brands b ON u.brand_id = b.id
+      LEFT JOIN models m ON u.model_id = m.id
       WHERE u.id = $1`,
       [userId]
     );
@@ -69,17 +101,21 @@ export default class UserService {
       last_name: user.last_name,
       email: user.email,
       phone: user.phone,
-      neighborhood: user.neighborhood_id
+      city: user.city_id
         ? {
-            id: user.neighborhood_id,
-            name: user.neighborhood_name,
-            district: {
-              id: user.district_id,
-              name: user.district_name
+            id: user.city_id,
+            name: user.city_name
+          }
+        : null,
+      vehicle: user.brand_id && user.model_id
+        ? {
+            brand: {
+              id: user.brand_id,
+              name: user.brand_name
             },
-            city: {
-              id: user.city_id,
-              name: user.city_name
+            model: {
+              id: user.model_id,
+              name: user.model_name
             }
           }
         : null

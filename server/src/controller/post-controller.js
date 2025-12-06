@@ -9,10 +9,10 @@ export default class PostController {
   }
 
   /**
-   * İlanları getir (filtreli)
+   * Gönderileri getir (filtreli)
    * GET /api/posts
-   * Query params: cityId, districtId, neighborhoodId, category, scope, page, limit
-   * scope: 'my' (kendi mahallem), 'all' (tüm Türkiye)
+   * Query params: cityId, brandId, modelId, category, scope, page, limit
+   * scope: 'my' (kendi ilim), 'all' (tüm Türkiye)
    */
   async getPosts(req, res, next) {
     try {
@@ -22,11 +22,11 @@ export default class PostController {
         throw new HttpException(401, 'Yetkilendirme gerekli');
       }
 
-      // Kullanıcının mahalle bilgisini al
+      // Kullanıcının il bilgisini al
       const profile = await this.userService.getProfile(userId);
 
-      if (!profile.neighborhood) {
-        throw new HttpException(400, 'Önce mahalle seçmelisiniz');
+      if (!profile.city) {
+        throw new HttpException(400, 'Önce il seçmelisiniz');
       }
 
       const page = parseInt(req.query.page) || 1;
@@ -37,18 +37,21 @@ export default class PostController {
       const filters = {};
 
       if (scope === 'my') {
-        // Kendi mahallesi
-        filters.neighborhoodId = profile.neighborhood.id;
+        // Kendi ili
+        filters.cityId = profile.city.id;
       } else {
         // Tüm Türkiye veya filtreli
-        if (req.query.neighborhoodId) {
-          filters.neighborhoodId = parseInt(req.query.neighborhoodId);
-        } else if (req.query.districtId) {
-          filters.districtId = parseInt(req.query.districtId);
-        } else if (req.query.cityId) {
+        if (req.query.cityId) {
           filters.cityId = parseInt(req.query.cityId);
         }
         // Filtre yoksa tüm Türkiye
+      }
+
+      // Marka ve model filtreleri
+      if (req.query.modelId) {
+        filters.modelId = parseInt(req.query.modelId);
+      } else if (req.query.brandId) {
+        filters.brandId = parseInt(req.query.brandId);
       }
 
       // Kategori filtresi
@@ -65,37 +68,45 @@ export default class PostController {
   }
 
   /**
-   * Yeni ilan oluştur
+   * Yeni gönderi oluştur
    * POST /api/posts
    */
   async createPost(req, res, next) {
     try {
       const userId = req.user?.userId;
-      const { category, content } = req.body;
+      const { category, content, brandId, modelId } = req.body;
 
       if (!userId) {
         throw new HttpException(401, 'Yetkilendirme gerekli');
       }
 
-      // Kullanıcının mahalle bilgisini al
+      // Kullanıcının il bilgisini al
       const profile = await this.userService.getProfile(userId);
 
-      if (!profile.neighborhood) {
-        throw new HttpException(400, 'Önce mahalle seçmelisiniz');
+      if (!profile.city) {
+        throw new HttpException(400, 'Önce il seçmelisiniz');
       }
 
       if (!category) {
         throw new HttpException(400, 'Kategori zorunludur');
       }
 
+      if (!brandId) {
+        throw new HttpException(400, 'Marka seçimi zorunludur');
+      }
+
+      if (!modelId) {
+        throw new HttpException(400, 'Model seçimi zorunludur');
+      }
+
       if (!content) {
         throw new HttpException(400, 'İçerik zorunludur');
       }
 
-      const post = await this.postService.createPost(userId, profile.neighborhood.id, category, content);
+      const post = await this.postService.createPost(userId, profile.city.id, brandId, modelId, category, content);
 
       res.status(201).json({
-        message: 'İlan oluşturuldu',
+        message: 'Gönderi oluşturuldu',
         post
       });
     } catch (error) {
@@ -104,7 +115,7 @@ export default class PostController {
   }
 
   /**
-   * İlanı sil
+   * Gönderiyi sil
    * DELETE /api/posts/:id
    */
   async deletePost(req, res, next) {
@@ -117,7 +128,7 @@ export default class PostController {
       }
 
       if (!id) {
-        throw new HttpException(400, 'İlan ID zorunludur');
+        throw new HttpException(400, 'Gönderi ID zorunludur');
       }
 
       const result = await this.postService.deletePost(id, userId);
@@ -129,7 +140,7 @@ export default class PostController {
   }
 
   /**
-   * Tek bir ilanı getir
+   * Tek bir gönderiyi getir
    * GET /api/posts/:id
    */
   async getPost(req, res, next) {
@@ -137,7 +148,7 @@ export default class PostController {
       const { id } = req.params;
 
       if (!id) {
-        throw new HttpException(400, 'İlan ID zorunludur');
+        throw new HttpException(400, 'Gönderi ID zorunludur');
       }
 
       const post = await this.postService.getPost(id);
@@ -149,7 +160,7 @@ export default class PostController {
   }
 
   /**
-   * Benzer ilanları getir (aynı mahallede)
+   * Benzer gönderileri getir (aynı marka-model)
    * GET /api/posts/:id/related
    */
   async getRelatedPosts(req, res, next) {
@@ -158,14 +169,14 @@ export default class PostController {
       const limit = parseInt(req.query.limit) || 3;
 
       if (!id) {
-        throw new HttpException(400, 'İlan ID zorunludur');
+        throw new HttpException(400, 'Gönderi ID zorunludur');
       }
 
-      // Önce ilanı al - mahalle bilgisi için
+      // Önce gönderiyi al - marka ve model bilgisi için
       const post = await this.postService.getPost(id);
       
-      // Benzer ilanları getir
-      const relatedPosts = await this.postService.getRelatedPosts(id, post.neighborhood_id, limit);
+      // Benzer gönderileri getir
+      const relatedPosts = await this.postService.getRelatedPosts(id, post.brand_id, post.model_id, limit);
 
       res.status(200).json({ posts: relatedPosts });
     } catch (error) {
@@ -174,7 +185,7 @@ export default class PostController {
   }
 
   /**
-   * Kullanıcının kendi ilanlarını getir
+   * Kullanıcının kendi gönderilerini getir
    * GET /api/posts/my
    */
   async getMyPosts(req, res, next) {

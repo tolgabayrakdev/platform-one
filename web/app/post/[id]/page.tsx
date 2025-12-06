@@ -16,18 +16,20 @@ interface Post {
     last_name: string;
   };
   location: {
-    neighborhood: string;
-    district: string;
     city: string;
+  };
+  vehicle: {
+    brand: string;
+    model: string;
   };
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  kayip: { label: "Kayıp", emoji: "🔍", color: "bg-red-100 text-red-800" },
-  yardim: { label: "Yardım", emoji: "🤝", color: "bg-blue-100 text-blue-800" },
-  etkinlik: { label: "Etkinlik", emoji: "🎉", color: "bg-purple-100 text-purple-800" },
-  ucretsiz: { label: "Ücretsiz", emoji: "🎁", color: "bg-green-100 text-green-800" },
-  soru: { label: "Soru", emoji: "❓", color: "bg-yellow-100 text-yellow-800" },
+  satilik: { label: "Satılık", emoji: "💰", color: "bg-green-100 text-green-800" },
+  kiralik: { label: "Kiralık", emoji: "🔑", color: "bg-blue-100 text-blue-800" },
+  yedek_parca: { label: "Yedek Parça", emoji: "🔧", color: "bg-purple-100 text-purple-800" },
+  aksesuar: { label: "Aksesuar", emoji: "🎨", color: "bg-pink-100 text-pink-800" },
+  servis: { label: "Servis", emoji: "🛠️", color: "bg-orange-100 text-orange-800" },
 };
 
 const API_URL = process.env.BACKEND_URL || "http://localhost:1234";
@@ -80,11 +82,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const post = await getPost(id);
 
   if (!post) {
-    return { title: "İlan Bulunamadı | Mahalle" };
+    return { title: "Gönderi Bulunamadı | Araç Platformu" };
   }
 
   const category = CATEGORY_LABELS[post.category] || { label: post.category, emoji: "📌" };
-  const title = `${category.emoji} ${category.label} - ${post.location.neighborhood} | Mahalle`;
+  const vehicle = post.vehicle ? `${post.vehicle.brand} ${post.vehicle.model}` : "";
+  const title = `${category.emoji} ${category.label}${vehicle ? ` - ${vehicle}` : ""} | Araç Platformu`;
   const description = post.content.slice(0, 160);
 
   return {
@@ -145,7 +148,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-xl mx-auto px-4 h-12 flex items-center gap-3">
           <BackButton />
-          <span className="font-semibold">İlan</span>
+          <span className="font-semibold">Gönderi</span>
         </div>
       </header>
 
@@ -171,28 +174,36 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
           <p className="text-base whitespace-pre-wrap mb-4">{post.content}</p>
 
           {/* Meta */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
-            <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
-              {category.emoji} {category.label}
-            </span>
-            <span>·</span>
-            <span>📍 {post.location.neighborhood}, {post.location.district}, {post.location.city}</span>
+          <div className="flex flex-col gap-2 text-sm text-muted-foreground mb-4">
+            <div className="flex items-center gap-3">
+              <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
+                {category.emoji} {category.label}
+              </span>
+            </div>
+            {post.vehicle && (
+              <div className="flex items-center gap-2">
+                <span>🚗 {post.vehicle.brand} {post.vehicle.model}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span>📍 {post.location.city}</span>
+            </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-4 pt-3 border-t border-border">
             <ShareButton 
               postId={post.id}
-              title={`${category.emoji} ${category.label} - Mahalle`}
+              title={`${category.emoji} ${category.label}${post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : ""} | Araç Platformu`}
               text={post.content.slice(0, 100) + (post.content.length > 100 ? "..." : "")}
             />
           </div>
         </article>
 
-        {/* Bu Mahallede - Benzer İlanlar */}
+        {/* Benzer Araçlar - Benzer Gönderiler */}
         {relatedPosts.length > 0 && (
           <section className="px-4 py-6 border-t border-border">
-            <h2 className="text-sm font-semibold mb-4">📍 Bu Mahallede</h2>
+            <h2 className="text-sm font-semibold mb-4">🚗 Benzer Araçlar</h2>
             <div className="space-y-3">
               {relatedPosts.map((relatedPost) => {
                 const relatedCategory = CATEGORY_LABELS[relatedPost.category] || { label: relatedPost.category, emoji: "📌", color: "bg-gray-100 text-gray-800" };
@@ -234,7 +245,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         {!loggedIn && (
           <div className="px-4 py-6 border-t border-border">
             <p className="text-sm text-muted-foreground mb-3">
-              Bu mahallede neler oluyor görmek ister misin?
+              Araç gönderilerini görmek ve gönderi paylaşmak ister misin?
             </p>
             <Link
               href="/sign-up"

@@ -11,11 +11,13 @@ interface Profile {
   last_name: string;
   email: string;
   phone: string;
-  neighborhood: {
+  city: {
     id: number;
     name: string;
-    district: { name: string };
-    city: { name: string };
+  } | null;
+  vehicle: {
+    brand: { id: number; name: string };
+    model: { id: number; name: string };
   } | null;
 }
 
@@ -95,9 +97,14 @@ export default function ProfilePage() {
           <h1 className="text-xl font-semibold">
             {profile?.first_name} {profile?.last_name}
           </h1>
-          {profile?.neighborhood && (
+          {profile?.city && (
             <p className="text-sm text-muted-foreground mt-1">
-              📍 {profile.neighborhood.name}, {profile.neighborhood.district.name}
+              📍 {profile.city.name}
+            </p>
+          )}
+          {profile?.vehicle && (
+            <p className="text-sm text-muted-foreground mt-1">
+              🚗 {profile.vehicle.brand.name} {profile.vehicle.model.name}
             </p>
           )}
         </div>
@@ -110,13 +117,21 @@ export default function ProfilePage() {
           </div>
           <div className="p-4 bg-muted/30 rounded-lg">
             <p className="text-xs text-muted-foreground mb-1">Telefon</p>
-            <p className="text-sm">{profile?.phone}</p>
+            <p className="text-sm">{profile?.phone || "Belirtilmemiş"}</p>
           </div>
           <div className="p-4 bg-muted/30 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">Mahalle</p>
+            <p className="text-xs text-muted-foreground mb-1">İl</p>
             <p className="text-sm">
-              {profile?.neighborhood
-                ? `${profile.neighborhood.name}, ${profile.neighborhood.district.name}, ${profile.neighborhood.city.name}`
+              {profile?.city
+                ? profile.city.name
+                : "Seçilmedi"}
+            </p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-1">Araç</p>
+            <p className="text-sm">
+              {profile?.vehicle
+                ? `${profile.vehicle.brand.name} ${profile.vehicle.model.name}`
                 : "Seçilmedi"}
             </p>
           </div>

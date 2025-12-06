@@ -17,23 +17,81 @@ interface CreatePostDialogProps {
 }
 
 const CATEGORIES = [
-  { value: "kayip", label: "Kayıp / Bulundu", emoji: "🔍" },
-  { value: "yardim", label: "Yardım", emoji: "🤝" },
-  { value: "etkinlik", label: "Etkinlik", emoji: "🎉" },
-  { value: "ucretsiz", label: "Ücretsiz Eşya", emoji: "🎁" },
-  { value: "soru", label: "Soru / Bilgi", emoji: "❓" },
+  { value: "satilik", label: "Satılık", emoji: "💰" },
+  { value: "kiralik", label: "Kiralık", emoji: "🔑" },
+  { value: "yedek_parca", label: "Yedek Parça", emoji: "🔧" },
+  { value: "aksesuar", label: "Aksesuar", emoji: "🎨" },
+  { value: "servis", label: "Servis", emoji: "🛠️" },
 ];
+
+interface Brand {
+  id: number;
+  name: string;
+}
+
+interface Model {
+  id: number;
+  name: string;
+}
 
 export default function CreatePostDialog({ open, onClose, onCreated }: CreatePostDialogProps) {
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
+  const [selectedModel, setSelectedModel] = useState<number | null>(null);
+
+  // Markaları yükle
+  useEffect(() => {
+    if (open) {
+      async function fetchBrands() {
+        try {
+          const res = await fetch("/api/locations/brands");
+          if (res.ok) {
+            const data = await res.json();
+            setBrands(data.brands);
+          }
+        } catch {
+          // Hata yok say
+        }
+      }
+      fetchBrands();
+    }
+  }, [open]);
+
+  // Marka değiştiğinde modelleri yükle
+  useEffect(() => {
+    if (!selectedBrand) {
+      setModels([]);
+      setSelectedModel(null);
+      return;
+    }
+
+    async function fetchModels() {
+      try {
+        const res = await fetch(`/api/locations/models/${selectedBrand}`);
+        if (res.ok) {
+          const data = await res.json();
+          setModels(data.models);
+        }
+      } catch {
+        // Hata yok say
+      }
+    }
+
+    fetchModels();
+    setSelectedModel(null);
+  }, [selectedBrand]);
 
   // Drawer kapandığında formu temizle
   useEffect(() => {
     if (!open) {
       setCategory("");
       setContent("");
+      setSelectedBrand(null);
+      setSelectedModel(null);
     }
   }, [open]);
 
@@ -45,8 +103,18 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
       return;
     }
 
+    if (!selectedBrand) {
+      toast.error("Lütfen marka seçin");
+      return;
+    }
+
+    if (!selectedModel) {
+      toast.error("Lütfen model seçin");
+      return;
+    }
+
     if (!content || content.trim().length < 10) {
-      toast.error("İlan içeriği en az 10 karakter olmalıdır");
+      toast.error("Gönderi içeriği en az 10 karakter olmalıdır");
       return;
     }
 
@@ -57,15 +125,20 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ category, content: content.trim() }),
+        body: JSON.stringify({ 
+          category, 
+          content: content.trim(),
+          brandId: selectedBrand,
+          modelId: selectedModel
+        }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "İlan oluşturulamadı");
+        throw new Error(data.message || "Gönderi oluşturulamadı");
       }
 
-      toast.success("İlan paylaşıldı!");
+      toast.success("Gönderi paylaşıldı!");
       onCreated();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Bir hata oluştu";
@@ -84,7 +157,7 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
       <DrawerContent className="max-h-[85vh]">
         <div className="mx-auto w-full max-w-md">
           <DrawerHeader className="pb-2">
-            <DrawerTitle className="text-base">Yeni İlan</DrawerTitle>
+            <DrawerTitle className="text-base">Yeni Gönderi</DrawerTitle>
           </DrawerHeader>
 
         {/* Form */}
@@ -111,6 +184,37 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
             </div>
           </div>
 
+          {/* Marka ve Model */}
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-muted-foreground">Araç</label>
+            
+            {/* Marka */}
+            <select
+              value={selectedBrand || ""}
+              onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">Marka seçin</option>
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.id}>{brand.name}</option>
+              ))}
+            </select>
+
+            {/* Model */}
+            {selectedBrand && (
+              <select
+                value={selectedModel || ""}
+                onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
+                className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Model seçin</option>
+                {models.map((model) => (
+                  <option key={model.id} value={model.id}>{model.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
           {/* İçerik */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
@@ -134,7 +238,7 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                     setContent(value);
                   }
                 }}
-                placeholder="Mahallenle paylaşmak istediğin şeyi yaz..."
+                placeholder="Araç hakkında detayları yazın..."
               rows={4}
                 className={`w-full px-3 py-2 text-sm border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 resize-none transition-colors ${
                   content.length >= 500 
@@ -163,7 +267,7 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
             </Button>
               <Button
                 type="submit"
-                disabled={saving || !category || content.trim().length < 10}
+                disabled={saving || !category || !selectedBrand || !selectedModel || content.trim().length < 10}
                 className="flex-1 h-10 rounded-lg text-sm"
               >
               {saving ? "Paylaşılıyor..." : "Paylaş"}

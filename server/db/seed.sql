@@ -1,138 +1,152 @@
 -- =============================================
 -- TEST VERİLERİ - SEED
--- Her mahalle için 100 ilan
+-- Her il için araç gönderileri
 -- =============================================
 
--- NOT: Tekrar çalıştırırsan yeni kullanıcı ve ilanlar eklenir (duplicate olmaz email unique olduğu için)
+-- NOT: Tekrar çalıştırırsan yeni kullanıcı ve gönderiler eklenir (duplicate olmaz email unique olduğu için)
 
 -- =============================================
--- TEST KULLANICILARI ve İLANLAR
+-- TEST KULLANICILARI ve GÖNDERİLER
 -- =============================================
 
 DO $$
 DECLARE
-    n_id INTEGER;
+    c_id INTEGER;
+    b_id INTEGER;
+    m_id INTEGER;
     u_id UUID;
     i INTEGER;
     j INTEGER;
     random_category VARCHAR;
     random_content TEXT;
-    categories VARCHAR[] := ARRAY['kayip', 'yardim', 'etkinlik', 'ucretsiz', 'soru'];
+    categories VARCHAR[] := ARRAY['satilik', 'kiralik', 'yedek_parca', 'aksesuar', 'servis'];
     first_names VARCHAR[] := ARRAY['Ahmet', 'Mehmet', 'Ali', 'Ayşe', 'Fatma', 'Zeynep', 'Mustafa', 'Hasan', 'Elif', 'Emre'];
     last_names VARCHAR[] := ARRAY['Yılmaz', 'Kaya', 'Demir', 'Çelik', 'Şahin', 'Yıldız', 'Öztürk', 'Aydın', 'Özdemir', 'Arslan'];
     
-    kayip_icerikler TEXT[] := ARRAY[
-        'Turuncu beyaz renkli kedim kayboldu. 2 yaşında, erkek, adı Pamuk. Gören olursa lütfen haber versin. 🐱',
-        'Siyah labrador cinsi köpeğim kayıp. Adı Max, 3 yaşında. Tasmasında telefon numarası var.',
-        'Gri British Shorthair kedim dün akşamdan beri kayıp. Adı Minnoş, çok uysal. Ödüllü!',
-        'Sarı kanarya kuşum camdan kaçtı. Şarkı söylemeyi çok sever. Bulan olursa minnettar olurum.',
-        'Kahverengi Pomeranian köpeğim kayıp. Adı Boncuk, 5 yaşında, dişi. Çok üzgünüm 😢',
-        'Beyaz Ankara kedisi kayıp. Bir gözü mavi bir gözü yeşil. Adı Kar.',
-        'Golden Retriever köpeğim dün parktan kaçtı. Adı Buddy, çok cana yakın.',
-        'Muhabbet kuşum uçtu gitti. Yeşil renkte, konuşuyor. Adı Çiko.',
-        'Tekir kedim 3 gündür kayıp. Kulağında küçük bir çentik var. Lütfen yardım edin.',
-        'Siyah beyaz Husky kayıp. Mavi gözlü, adı Luna. Çok özledik.'
+    -- Dinamik içerik şablonları (marka ve model isimleri ile doldurulacak)
+    satilik_template TEXT := '%s model %s satılık. %s km, bakımlı, hasarsız. Fiyat görüşülebilir. İletişim için mesaj atın. 🚗';
+    kiralik_template TEXT := '%s kiralık. Günlük/haftalık/aylık kiralama seçenekleri mevcut. Detaylar için mesaj atın. 🚗';
+    yedek_parca_template TEXT := '%s %s için yedek parça. Orijinal, çalışır durumda. Fiyat görüşülebilir. 🔧';
+    
+    aksesuar_icerikler TEXT[] := ARRAY[
+        'Araç için güneşlik seti. 4 cam için, kaliteli malzeme. Fiyat: 150 TL. 🎨',
+        'Araç için paspas seti. Kauçuk, su geçirmez. Fiyat: 200 TL.',
+        'Araç için koltuk kılıfı seti. Kumaş, yıkanabilir. Fiyat: 300 TL.',
+        'Araç için telefon tutacağı. Manyetik, güçlü. Fiyat: 50 TL.',
+        'Araç için USB şarj adaptörü. Çift portlu, hızlı şarj. Fiyat: 80 TL.',
+        'Araç için güneşlik perdesi. Ön cam için, katlanabilir. Fiyat: 100 TL.',
+        'Araç için koku spreyleri seti. 3 adet, farklı kokular. Fiyat: 60 TL.',
+        'Araç için temizlik seti. Mikrofiber bezler dahil. Fiyat: 120 TL.',
+        'Araç için bagaj organizatörü. Katlanabilir, pratik. Fiyat: 180 TL.',
+        'Araç için güneşlik cam filmi. Profesyonel uygulama. Fiyat görüşülebilir.'
     ];
     
-    yardim_icerikler TEXT[] := ARRAY[
-        'Yarın taşınıyorum, yardımcı olabilecek 2-3 kişi arıyorum. Kahvaltı ve öğle yemeği benden! 📦',
-        'Acil matkap lazım, yarın sabaha kadar. Ödünç verebilecek var mı?',
-        'Arabam bozuldu, akü takviye edebilecek biri var mı? Şu an X caddesindeyim.',
-        'Çocuğumu yarın okula götüremiyorum, biri alabilir mi? Aynı okulda çocuğu olan?',
-        'Bilgisayarım çok yavaşladı, format atabilecek biri var mı? Karşılığında yemek ısmarlarım.',
-        'Dolap taşımada yardım lazım, 3. kata çıkaracağız. Akşam 18:00 civarı müsait olan?',
-        'Kedime yarın bakabilecek biri var mı? 1 günlük iş seyahati için.',
-        'İngilizce çeviri yapabilecek biri lazım acil. Kısa bir metin, ücretli olabilir.',
-        'Bisiklet tamiri bilen var mı? Zincir koptu, nasıl takılıyor bilmiyorum.',
-        'Yarın hastaneye gidiyorum, arabası olan biri götürebilir mi? Taksi çok pahalı.'
-    ];
-    
-    etkinlik_icerikler TEXT[] := ARRAY[
-        'Bu cumartesi mahalle pikniği yapıyoruz! Herkes davetli, parkta saat 14:00''da buluşalım. 🌳',
-        'Kitap kulübü toplantısı bu çarşamba. Bu ay Sabahattin Ali okuyoruz. Katılmak isteyen?',
-        'Mahalle koşu grubu kuruyoruz! Her sabah 07:00''da parkta buluşma. İlgilenen yazsın.',
-        'Çocuklar için ücretsiz resim kursu başlıyor. Cumartesi günleri, 10:00-12:00.',
-        'Bu pazar mahalle temizlik günü! Gönüllüler arıyoruz. Malzemeler belediyeden.',
-        'Yoga dersleri başlıyor! Her salı ve perşembe akşamı. İlk ders ücretsiz.',
-        'Mahalle mangal partisi bu hafta sonu! Herkes bir şey getirsin. 🍖',
-        'Satranç turnuvası düzenliyoruz. Tüm yaş gruplarına açık. Kayıt için mesaj atın.',
-        'Film gecesi bu cuma! Açık havada, battaniyenizi getirin. Film: Yeşilçam klasiği.',
-        'Komşu buluşması bu akşam kafede. Yeni taşınanlar özellikle bekliyoruz!'
-    ];
-    
-    ucretsiz_icerikler TEXT[] := ARRAY[
-        'Ücretsiz koltuk takımı. 3+2+1, biraz eskimiş ama kullanılabilir. Alacak olan yazsın. 🛋️',
-        'Çalışan eski buzdolabı. Taşıma sizden, ücretsiz veriyorum.',
-        'Çocuk kıyafetleri (2-4 yaş). Temiz, iyi durumda. Poşetlenmiş bekliyor.',
-        'Eski kitaplar - roman, hikaye, tarih. 50+ kitap, hepsi ücretsiz.',
-        'Tek kişilik yatak. Şilte dahil, temiz. Öğrenciye verilir.',
-        'Çalışır durumda çamaşır makinesi. 10 yaşında ama hala iş görüyor.',
-        'Bebek arabası, az kullanılmış. İhtiyacı olana ücretsiz.',
-        'Eski bilgisayar monitörü. VGA girişli, çalışıyor.',
-        'Mutfak eşyaları - tencere, tava seti. Taşındığım için veriyorum.',
-        'Bisiklet (tamir gerekli). Lastiği patlak, zinciri sağlam.'
-    ];
-    
-    soru_icerikler TEXT[] := ARRAY[
-        'Bu mahallede güvenilir bir tesisatçı bilen var mı? Acil değil ama öneri lazım. 🔧',
-        'En yakın eczane hangisi ve kaça kadar açık?',
-        'Mahallede kedi maması satan market var mı? Sürekli şehir merkezine gidiyorum.',
-        'Çöpler hangi gün toplanıyor? Yeni taşındım, bilmiyorum.',
-        'İyi bir kuaför önerebilir misiniz? Erkek kuaförü arıyorum.',
-        'Parkın açık olduğu saatler nedir? Gece koşusu yapmak istiyorum.',
-        'Mahallede wifi iyi çeken cafe var mı? Uzaktan çalışıyorum.',
-        'Pazar günleri açık market var mı?',
-        'Veteriner önerisi lazım. Kedim için rutin kontrol yaptıracağım.',
-        'Mahallede elektrikçi bilen var mı? Sigorta sürekli atıyor.'
+    servis_icerikler TEXT[] := ARRAY[
+        'Araç bakım ve onarım hizmeti. Deneyimli ustalar, uygun fiyat. İletişim için mesaj atın. 🛠️',
+        'Periyodik bakım hizmeti. Yağ değişimi, filtre değişimi. Fiyat görüşülebilir.',
+        'Motor tamiri hizmeti. Tüm markalar için hizmet. Deneyimli ekip.',
+        'Fren sistemi bakımı. Fren balata, disk değişimi. Uygun fiyat garantisi.',
+        'Klima bakımı ve tamiri. Gaz doldurma, filtre değişimi. Hızlı servis.',
+        'Elektrik arıza tamiri. Alternatör, marş motoru, akü. Deneyimli elektrikçi.',
+        'Kaporta ve boya hizmeti. Hasar onarımı, boyama. Profesyonel işçilik.',
+        'Lastik değişimi ve balans ayarı. Tüm lastik markaları. Hızlı servis.',
+        'Cam tamiri ve değişimi. Ön cam, yan camlar. Sigorta anlaşmalı.',
+        'Egzoz tamiri. Muffler, katalizör değişimi. Uygun fiyat garantisi.'
     ];
     
     user_ids UUID[];
+    city_ids INTEGER[];
+    brand_ids INTEGER[];
+    model_ids INTEGER[];
+    brand_name TEXT;
+    model_name TEXT;
+    year_val INTEGER;
+    km_val INTEGER;
+    price_val INTEGER;
 BEGIN
-    -- Her mahalle için
-    FOR n_id IN SELECT id FROM neighborhoods LOOP
+    -- Tüm illeri al
+    SELECT ARRAY_AGG(id) INTO city_ids FROM cities;
+    
+    -- Tüm markaları al
+    SELECT ARRAY_AGG(id) INTO brand_ids FROM brands;
+    
+    -- Her il için
+    FOREACH c_id IN ARRAY city_ids LOOP
         user_ids := ARRAY[]::UUID[];
         
         -- 5 kullanıcı oluştur (her çalıştırmada unique)
         FOR i IN 1..5 LOOP
-            INSERT INTO users (first_name, last_name, email, phone, password, is_verified, email_verified, phone_verified, neighborhood_id)
+            INSERT INTO users (first_name, last_name, email, phone, password, is_verified, email_verified, phone_verified, city_id)
             VALUES (
                 first_names[floor(random() * 10 + 1)],
                 last_names[floor(random() * 10 + 1)],
-                'test_' || n_id || '_' || extract(epoch from now())::bigint || '_' || floor(random() * 10000)::int || '_' || i || '@mahalle.app',
+                'test_' || c_id || '_' || extract(epoch from now())::bigint || '_' || floor(random() * 10000)::int || '_' || i || '@arac.app',
                 '+9053' || (10000000 + floor(random() * 89999999))::TEXT,
                 '$2b$10$xPPMfPZfMqNqR0ZJGtOeAuYxLxMqMqMqMqMqMqMqMqMqMqMqMqMqM',
-                true, true, true, n_id
+                true, true, true, c_id
             )
             RETURNING id INTO u_id;
             
             user_ids := array_append(user_ids, u_id);
         END LOOP;
         
-        -- 100 ilan oluştur
-        FOR j IN 1..100 LOOP
-            random_category := categories[floor(random() * 5 + 1)];
+        -- Her marka için
+        FOREACH b_id IN ARRAY brand_ids LOOP
+            -- Marka ismini al
+            SELECT name INTO brand_name FROM brands WHERE id = b_id;
             
-            CASE random_category
-                WHEN 'kayip' THEN random_content := kayip_icerikler[floor(random() * 10 + 1)];
-                WHEN 'yardim' THEN random_content := yardim_icerikler[floor(random() * 10 + 1)];
-                WHEN 'etkinlik' THEN random_content := etkinlik_icerikler[floor(random() * 10 + 1)];
-                WHEN 'ucretsiz' THEN random_content := ucretsiz_icerikler[floor(random() * 10 + 1)];
-                WHEN 'soru' THEN random_content := soru_icerikler[floor(random() * 10 + 1)];
-            END CASE;
+            -- Bu markaya ait modelleri al
+            SELECT ARRAY_AGG(id) INTO model_ids FROM models WHERE brand_id = b_id;
             
-            INSERT INTO posts (user_id, neighborhood_id, category, content, created_at)
-            VALUES (
-                user_ids[floor(random() * 5 + 1)],
-                n_id,
-                random_category,
-                random_content,
-                NOW() - (floor(random() * 30) || ' days')::INTERVAL - (floor(random() * 24) || ' hours')::INTERVAL
-            );
+            -- Eğer bu markaya ait model yoksa atla
+            IF model_ids IS NULL THEN
+                CONTINUE;
+            END IF;
+            
+            -- Her model için 10 gönderi oluştur
+            FOREACH m_id IN ARRAY model_ids LOOP
+                -- Model ismini al
+                SELECT name INTO model_name FROM models WHERE id = m_id;
+                
+                FOR j IN 1..10 LOOP
+                    random_category := categories[floor(random() * 5 + 1)];
+                    
+                    -- Rastgele yıl, km ve fiyat oluştur
+                    year_val := 2015 + floor(random() * 10); -- 2015-2024 arası
+                    km_val := 20000 + floor(random() * 100000); -- 20.000-120.000 km arası
+                    price_val := 150000 + floor(random() * 400000); -- 150.000-550.000 TL arası
+                    
+                    -- Kategoriye göre içerik oluştur
+                    CASE random_category
+                        WHEN 'satilik' THEN 
+                            random_content := format(satilik_template, year_val::TEXT, brand_name || ' ' || model_name, km_val::TEXT);
+                        WHEN 'kiralik' THEN 
+                            random_content := format(kiralik_template, brand_name || ' ' || model_name);
+                        WHEN 'yedek_parca' THEN 
+                            random_content := format(yedek_parca_template, brand_name, model_name);
+                        WHEN 'aksesuar' THEN 
+                            random_content := aksesuar_icerikler[floor(random() * 10 + 1)];
+                        WHEN 'servis' THEN 
+                            random_content := servis_icerikler[floor(random() * 10 + 1)];
+                    END CASE;
+                    
+                    INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content, created_at)
+                    VALUES (
+                        user_ids[floor(random() * 5 + 1)],
+                        c_id,
+                        b_id,
+                        m_id,
+                        random_category,
+                        random_content,
+                        NOW() - (floor(random() * 30) || ' days')::INTERVAL - (floor(random() * 24) || ' hours')::INTERVAL
+                    );
+                END LOOP;
+            END LOOP;
         END LOOP;
     END LOOP;
 END $$;
 
 -- Sonuç
-SELECT 'Kullanıcı: ' || COUNT(*) FROM users WHERE email LIKE 'test%@mahalle.app'
+SELECT 'Kullanıcı: ' || COUNT(*) FROM users WHERE email LIKE 'test%@arac.app'
 UNION ALL
-SELECT 'İlan: ' || COUNT(*) FROM posts;
+SELECT 'Gönderi: ' || COUNT(*) FROM posts;

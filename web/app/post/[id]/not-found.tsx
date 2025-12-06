@@ -5,9 +5,9 @@ export default function PostNotFound() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="text-center space-y-4">
         <p className="text-6xl">🔍</p>
-        <h1 className="text-2xl font-bold">İlan Bulunamadı</h1>
+        <h1 className="text-2xl font-bold">Gönderi Bulunamadı</h1>
         <p className="text-muted-foreground">
-          Aradığınız ilan silinmiş veya mevcut değil.
+          Aradığınız gönderi silinmiş veya mevcut değil.
         </p>
         <Link
           href="/feed"

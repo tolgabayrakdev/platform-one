@@ -9,12 +9,12 @@ interface City {
   name: string;
 }
 
-interface District {
+interface Brand {
   id: number;
   name: string;
 }
 
-interface Neighborhood {
+interface Model {
   id: number;
   name: string;
 }
@@ -24,12 +24,12 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
 
   const [cities, setCities] = useState<City[]>([]);
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
 
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<number | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
+  const [selectedModel, setSelectedModel] = useState<number | null>(null);
 
   // Sayfa yüklendiğinde auth kontrolü ve illeri getir
   useEffect(() => {
@@ -45,15 +45,15 @@ export default function OnboardingPage() {
           return;
         }
 
-        // Kullanıcının zaten mahallesi var mı?
+        // Kullanıcının zaten ili ve aracı var mı?
         const profileRes = await fetch("/api/users/profile", {
           credentials: "include",
         });
 
         if (profileRes.ok) {
           const data = await profileRes.json();
-          if (data.profile?.neighborhood) {
-            // Mahalle zaten seçili, feed'e yönlendir
+          if (data.profile?.city && data.profile?.vehicle) {
+            // İl ve araç zaten seçili, feed'e yönlendir
             window.location.href = "/feed";
             return;
           }
@@ -65,6 +65,13 @@ export default function OnboardingPage() {
           const data = await citiesRes.json();
           setCities(data.cities);
         }
+
+        // Markaları getir
+        const brandsRes = await fetch("/api/locations/brands");
+        if (brandsRes.ok) {
+          const data = await brandsRes.json();
+          setBrands(data.brands);
+        }
       } catch {
         toast.error("Bir hata oluştu");
       } finally {
@@ -75,76 +82,74 @@ export default function OnboardingPage() {
     init();
   }, []);
 
-  // İl seçildiğinde ilçeleri getir
+  // Marka değiştiğinde modelleri getir
   useEffect(() => {
-    if (!selectedCity) {
-      setDistricts([]);
-      setSelectedDistrict(null);
+    if (!selectedBrand) {
+      setModels([]);
+      setSelectedModel(null);
       return;
     }
 
-    async function fetchDistricts() {
+    async function fetchModels() {
       try {
-        const res = await fetch(`/api/locations/districts/${selectedCity}`);
+        const res = await fetch(`/api/locations/models/${selectedBrand}`);
         if (res.ok) {
           const data = await res.json();
-          setDistricts(data.districts);
+          setModels(data.models);
         }
       } catch {
-        toast.error("İlçeler yüklenemedi");
+        toast.error("Modeller yüklenemedi");
       }
     }
 
-    fetchDistricts();
-    setSelectedDistrict(null);
-    setNeighborhoods([]);
-    setSelectedNeighborhood(null);
-  }, [selectedCity]);
+    fetchModels();
+    setSelectedModel(null);
+  }, [selectedBrand]);
 
-  // İlçe seçildiğinde mahalleleri getir
-  useEffect(() => {
-    if (!selectedDistrict) {
-      setNeighborhoods([]);
-      setSelectedNeighborhood(null);
-      return;
-    }
-
-    async function fetchNeighborhoods() {
-      try {
-        const res = await fetch(`/api/locations/neighborhoods/${selectedDistrict}`);
-        if (res.ok) {
-          const data = await res.json();
-          setNeighborhoods(data.neighborhoods);
-        }
-      } catch {
-        toast.error("Mahalleler yüklenemedi");
-      }
-    }
-
-    fetchNeighborhoods();
-    setSelectedNeighborhood(null);
-  }, [selectedDistrict]);
-
-  // Mahalle kaydet
+  // İl ve araç kaydet
   async function handleSubmit() {
-    if (!selectedNeighborhood) {
-      toast.error("Lütfen mahalle seçin");
+    if (!selectedCity) {
+      toast.error("Lütfen il seçin");
+      return;
+    }
+
+    if (!selectedBrand) {
+      toast.error("Lütfen marka seçin");
+      return;
+    }
+
+    if (!selectedModel) {
+      toast.error("Lütfen model seçin");
       return;
     }
 
     setSaving(true);
 
     try {
-      const res = await fetch("/api/users/neighborhood", {
+      // İl kaydet
+      const cityRes = await fetch("/api/users/city", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ neighborhoodId: selectedNeighborhood }),
+        body: JSON.stringify({ cityId: selectedCity }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Mahalle kaydedilemedi");
+      if (!cityRes.ok) {
+        const data = await cityRes.json();
+        throw new Error(data.message || "İl kaydedilemedi");
+      }
+
+      // Araç kaydet
+      const vehicleRes = await fetch("/api/users/vehicle", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ brandId: selectedBrand, modelId: selectedModel }),
+      });
+
+      if (!vehicleRes.ok) {
+        const data = await vehicleRes.json();
+        throw new Error(data.message || "Araç bilgisi kaydedilemedi");
       }
 
       window.location.href = "/feed";
@@ -170,10 +175,10 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <div className="text-4xl mb-4">📍</div>
-          <h1 className="text-2xl font-bold">Mahallenizi Seçin</h1>
+          <div className="text-4xl mb-4">🚗</div>
+          <h1 className="text-2xl font-bold">Profilinizi Tamamlayın</h1>
           <p className="text-muted-foreground">
-            Size en yakın ilanları gösterebilmemiz için mahallenizi seçin
+            İlinizi ve aracınızı seçin
           </p>
         </div>
 
@@ -195,45 +200,45 @@ export default function OnboardingPage() {
             </select>
           </div>
 
-          {/* İlçe Seçimi */}
+          {/* Marka Seçimi */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium">İlçe</label>
+            <label className="block text-sm font-medium">Marka</label>
             <select
-              value={selectedDistrict || ""}
-              onChange={(e) => setSelectedDistrict(e.target.value ? Number(e.target.value) : null)}
-              disabled={!selectedCity}
-              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+              value={selectedBrand || ""}
+              onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">İlçe seçin</option>
-              {districts.map((district) => (
-                <option key={district.id} value={district.id}>
-                  {district.name}
+              <option value="">Marka seçin</option>
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.id}>
+                  {brand.name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Mahalle Seçimi */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">Mahalle</label>
-            <select
-              value={selectedNeighborhood || ""}
-              onChange={(e) => setSelectedNeighborhood(e.target.value ? Number(e.target.value) : null)}
-              disabled={!selectedDistrict}
-              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">Mahalle seçin</option>
-              {neighborhoods.map((neighborhood) => (
-                <option key={neighborhood.id} value={neighborhood.id}>
-                  {neighborhood.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Model Seçimi */}
+          {selectedBrand && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Model</label>
+              <select
+                value={selectedModel || ""}
+                onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Model seçin</option>
+                {models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <Button
             onClick={handleSubmit}
-            disabled={!selectedNeighborhood || saving}
+            disabled={!selectedCity || !selectedBrand || !selectedModel || saving}
             className="w-full mt-4"
           >
             {saving ? "Kaydediliyor..." : "Devam Et"}

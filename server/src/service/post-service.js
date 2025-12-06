@@ -1,32 +1,34 @@
 import pool from '../config/database.js';
 import HttpException from '../exceptions/http-exception.js';
 
-const VALID_CATEGORIES = ['kayip', 'yardim', 'etkinlik', 'ucretsiz', 'soru'];
+const VALID_CATEGORIES = ['satilik', 'kiralik', 'yedek_parca', 'aksesuar', 'servis'];
 
 export default class PostService {
   /**
-   * İlanları getir (filtreli)
-   * @param {Object} filters - { cityId, districtId, neighborhoodId, category }
+   * Gönderileri getir (filtreli)
+   * @param {Object} filters - { cityId, brandId, modelId, category }
    * @param {number} page
    * @param {number} limit
    */
   async getPosts(filters = {}, page = 1, limit = 20) {
     const offset = (page - 1) * limit;
-    const { cityId, districtId, neighborhoodId, category } = filters;
+    const { cityId, brandId, modelId, category } = filters;
 
     // Dinamik WHERE koşulları
     const conditions = [];
     const params = [];
     let paramIndex = 1;
 
-    if (neighborhoodId) {
-      conditions.push(`p.neighborhood_id = $${paramIndex++}`);
-      params.push(neighborhoodId);
-    } else if (districtId) {
-      conditions.push(`n.district_id = $${paramIndex++}`);
-      params.push(districtId);
-    } else if (cityId) {
-      conditions.push(`d.city_id = $${paramIndex++}`);
+    if (modelId) {
+      conditions.push(`p.model_id = $${paramIndex++}`);
+      params.push(modelId);
+    } else if (brandId) {
+      conditions.push(`p.brand_id = $${paramIndex++}`);
+      params.push(brandId);
+    }
+
+    if (cityId) {
+      conditions.push(`p.city_id = $${paramIndex++}`);
       params.push(cityId);
     }
 
@@ -46,14 +48,14 @@ export default class PostService {
         u.id as user_id,
         u.first_name,
         u.last_name,
-        n.name as neighborhood_name,
-        d.name as district_name,
-        c.name as city_name
+        c.name as city_name,
+        b.name as brand_name,
+        m.name as model_name
       FROM posts p
       JOIN users u ON p.user_id = u.id
-      JOIN neighborhoods n ON p.neighborhood_id = n.id
-      JOIN districts d ON n.district_id = d.id
-      JOIN cities c ON d.city_id = c.id
+      JOIN cities c ON p.city_id = c.id
+      JOIN brands b ON p.brand_id = b.id
+      JOIN models m ON p.model_id = m.id
       ${whereClause}
       ORDER BY p.created_at DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
@@ -63,8 +65,8 @@ export default class PostService {
     // Toplam sayı
     const countResult = await pool.query(
       `SELECT COUNT(*) FROM posts p
-       JOIN neighborhoods n ON p.neighborhood_id = n.id
-       JOIN districts d ON n.district_id = d.id
+       JOIN brands b ON p.brand_id = b.id
+       JOIN models m ON p.model_id = m.id
        ${whereClause}`,
       params
     );
@@ -83,9 +85,11 @@ export default class PostService {
           last_name: post.last_name
         },
         location: {
-          neighborhood: post.neighborhood_name,
-          district: post.district_name,
           city: post.city_name
+        },
+        vehicle: {
+          brand: post.brand_name,
+          model: post.model_name
         }
       })),
       pagination: {
@@ -98,9 +102,9 @@ export default class PostService {
   }
 
   /**
-   * Yeni ilan oluştur
+   * Yeni gönderi oluştur
    */
-  async createPost(userId, neighborhoodId, category, content) {
+  async createPost(userId, cityId, brandId, modelId, category, content) {
     // Kategori kontrolü
     if (!VALID_CATEGORIES.includes(category)) {
       throw new HttpException(400, `Geçersiz kategori. Geçerli kategoriler: ${VALID_CATEGORIES.join(', ')}`);
@@ -108,45 +112,45 @@ export default class PostService {
 
     // İçerik kontrolü
     if (!content || content.trim().length < 10) {
-      throw new HttpException(400, 'İlan içeriği en az 10 karakter olmalıdır');
+      throw new HttpException(400, 'Gönderi içeriği en az 10 karakter olmalıdır');
     }
 
     if (content.length > 500) {
-      throw new HttpException(400, 'İlan içeriği en fazla 500 karakter olabilir');
+      throw new HttpException(400, 'Gönderi içeriği en fazla 500 karakter olabilir');
     }
 
     const result = await pool.query(
-      `INSERT INTO posts (user_id, neighborhood_id, category, content)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, category, content, created_at`,
-      [userId, neighborhoodId, category, content.trim()]
+      [userId, cityId, brandId, modelId, category, content.trim()]
     );
 
     return result.rows[0];
   }
 
   /**
-   * İlanı sil (sadece kendi ilanı)
+   * Gönderiyi sil (sadece kendi gönderisi)
    */
   async deletePost(postId, userId) {
-    // İlan var mı ve bu kullanıcıya ait mi kontrol et
+    // Gönderi var mı ve bu kullanıcıya ait mi kontrol et
     const checkResult = await pool.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
 
     if (checkResult.rows.length === 0) {
-      throw new HttpException(404, 'İlan bulunamadı');
+      throw new HttpException(404, 'Gönderi bulunamadı');
     }
 
     if (checkResult.rows[0].user_id !== userId) {
-      throw new HttpException(403, 'Bu ilanı silme yetkiniz yok');
+      throw new HttpException(403, 'Bu gönderiyi silme yetkiniz yok');
     }
 
     await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
 
-    return { message: 'İlan silindi' };
+    return { message: 'Gönderi silindi' };
   }
 
   /**
-   * Kullanıcının kendi ilanlarını getir
+   * Kullanıcının kendi gönderilerini getir
    */
   async getMyPosts(userId, page = 1, limit = 20) {
     const offset = (page - 1) * limit;
@@ -157,13 +161,13 @@ export default class PostService {
         p.category,
         p.content,
         p.created_at,
-        n.name as neighborhood_name,
-        d.name as district_name,
-        c.name as city_name
+        c.name as city_name,
+        b.name as brand_name,
+        m.name as model_name
       FROM posts p
-      JOIN neighborhoods n ON p.neighborhood_id = n.id
-      JOIN districts d ON n.district_id = d.id
-      JOIN cities c ON d.city_id = c.id
+      JOIN cities c ON p.city_id = c.id
+      JOIN brands b ON p.brand_id = b.id
+      JOIN models m ON p.model_id = m.id
       WHERE p.user_id = $1
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3`,
@@ -181,9 +185,11 @@ export default class PostService {
         content: post.content,
         created_at: post.created_at,
         location: {
-          neighborhood: post.neighborhood_name,
-          district: post.district_name,
           city: post.city_name
+        },
+        vehicle: {
+          brand: post.brand_name,
+          model: post.model_name
         }
       })),
       pagination: {
@@ -196,7 +202,7 @@ export default class PostService {
   }
 
   /**
-   * Tek bir ilanı getir
+   * Tek bir gönderiyi getir
    */
   async getPost(postId) {
     const result = await pool.query(
@@ -205,25 +211,26 @@ export default class PostService {
         p.category,
         p.content,
         p.created_at,
-        p.neighborhood_id,
+        p.city_id,
+        p.brand_id,
+        p.model_id,
         u.id as user_id,
         u.first_name,
         u.last_name,
-        n.name as neighborhood_name,
-        n.id as neighborhood_id,
-        d.name as district_name,
-        c.name as city_name
+        c.name as city_name,
+        b.name as brand_name,
+        m.name as model_name
       FROM posts p
       JOIN users u ON p.user_id = u.id
-      JOIN neighborhoods n ON p.neighborhood_id = n.id
-      JOIN districts d ON n.district_id = d.id
-      JOIN cities c ON d.city_id = c.id
+      JOIN cities c ON p.city_id = c.id
+      JOIN brands b ON p.brand_id = b.id
+      JOIN models m ON p.model_id = m.id
       WHERE p.id = $1`,
       [postId]
     );
 
     if (result.rows.length === 0) {
-      throw new HttpException(404, 'İlan bulunamadı');
+      throw new HttpException(404, 'Gönderi bulunamadı');
     }
 
     const post = result.rows[0];
@@ -233,24 +240,28 @@ export default class PostService {
       category: post.category,
       content: post.content,
       created_at: post.created_at,
-      neighborhood_id: post.neighborhood_id,
+      city_id: post.city_id,
+      brand_id: post.brand_id,
+      model_id: post.model_id,
       user: {
         id: post.user_id,
         first_name: post.first_name,
         last_name: post.last_name
       },
       location: {
-        neighborhood: post.neighborhood_name,
-        district: post.district_name,
         city: post.city_name
+      },
+      vehicle: {
+        brand: post.brand_name,
+        model: post.model_name
       }
     };
   }
 
   /**
-   * Benzer ilanları getir (aynı mahallede, mevcut ilan hariç)
+   * Benzer gönderileri getir (aynı marka-model, mevcut gönderi hariç)
    */
-  async getRelatedPosts(postId, neighborhoodId, limit = 3) {
+  async getRelatedPosts(postId, brandId, modelId, limit = 3) {
     const result = await pool.query(
       `SELECT 
         p.id,
@@ -262,10 +273,10 @@ export default class PostService {
         u.last_name
       FROM posts p
       JOIN users u ON p.user_id = u.id
-      WHERE p.neighborhood_id = $1 AND p.id != $2
+      WHERE p.brand_id = $1 AND p.model_id = $2 AND p.id != $3
       ORDER BY p.created_at DESC
-      LIMIT $3`,
-      [neighborhoodId, postId, limit]
+      LIMIT $4`,
+      [brandId, modelId, postId, limit]
     );
 
     return result.rows.map((post) => ({

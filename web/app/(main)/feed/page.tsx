@@ -20,9 +20,12 @@ interface User {
 }
 
 interface Location {
-  neighborhood: string;
-  district: string;
   city: string;
+}
+
+interface Vehicle {
+  brand: string;
+  model: string;
 }
 
 interface Post {
@@ -32,17 +35,16 @@ interface Post {
   created_at: string;
   user: User;
   location: Location;
+  vehicle: Vehicle;
 }
 
 interface Profile {
   id: string;
   first_name: string;
   last_name: string;
-  neighborhood: {
+  city: {
     id: number;
     name: string;
-    district: { id: number; name: string };
-    city: { id: number; name: string };
   } | null;
 }
 
@@ -51,31 +53,31 @@ interface City {
   name: string;
 }
 
-interface District {
+interface Brand {
   id: number;
   name: string;
 }
 
-interface Neighborhood {
+interface Model {
   id: number;
   name: string;
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  kayip: { label: "Kayıp / Bulundu", emoji: "🔍", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300" },
-  yardim: { label: "Yardım", emoji: "🤝", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" },
-  etkinlik: { label: "Etkinlik", emoji: "🎉", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" },
-  ucretsiz: { label: "Ücretsiz Eşya", emoji: "🎁", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
-  soru: { label: "Soru / Bilgi", emoji: "❓", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  satilik: { label: "Satılık", emoji: "💰", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
+  kiralik: { label: "Kiralık", emoji: "🔑", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" },
+  yedek_parca: { label: "Yedek Parça", emoji: "🔧", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" },
+  aksesuar: { label: "Aksesuar", emoji: "🎨", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300" },
+  servis: { label: "Servis", emoji: "🛠️", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" },
 };
 
 const CATEGORIES = [
   { value: "", label: "Tümü", emoji: "📋" },
-  { value: "kayip", label: "Kayıp / Bulundu", emoji: "🔍" },
-  { value: "yardim", label: "Yardım", emoji: "🤝" },
-  { value: "etkinlik", label: "Etkinlik", emoji: "🎉" },
-  { value: "ucretsiz", label: "Ücretsiz Eşya", emoji: "🎁" },
-  { value: "soru", label: "Soru / Bilgi", emoji: "❓" },
+  { value: "satilik", label: "Satılık", emoji: "💰" },
+  { value: "kiralik", label: "Kiralık", emoji: "🔑" },
+  { value: "yedek_parca", label: "Yedek Parça", emoji: "🔧" },
+  { value: "aksesuar", label: "Aksesuar", emoji: "🎨" },
+  { value: "servis", label: "Servis", emoji: "🛠️" },
 ];
 
 export default function FeedPage() {
@@ -92,20 +94,20 @@ export default function FeedPage() {
   const urlScope = (searchParams.get("scope") as "my" | "all") || "my";
   const urlCategory = searchParams.get("category") || "";
   const urlCity = searchParams.get("city") ? Number(searchParams.get("city")) : null;
-  const urlDistrict = searchParams.get("district") ? Number(searchParams.get("district")) : null;
-  const urlNeighborhood = searchParams.get("neighborhood") ? Number(searchParams.get("neighborhood")) : null;
+  const urlBrand = searchParams.get("brand") ? Number(searchParams.get("brand")) : null;
+  const urlModel = searchParams.get("model") ? Number(searchParams.get("model")) : null;
   const urlNew = searchParams.get("new") === "true";
 
   const [scope, setScope] = useState<"my" | "all">(urlScope);
   const [selectedCategory, setSelectedCategory] = useState(urlCategory);
   const [cities, setCities] = useState<City[]>([]);
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
   const [selectedCity, setSelectedCity] = useState<number | null>(urlCity);
-  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(urlDistrict);
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<number | null>(urlNeighborhood);
+  const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
+  const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
   const [showFilters, setShowFilters] = useState(
-    !!(searchParams.get("category") || searchParams.get("city"))
+    !!(searchParams.get("category") || searchParams.get("city") || searchParams.get("brand"))
   );
 
   // Infinite scroll
@@ -136,9 +138,9 @@ export default function FeedPage() {
     setScope(urlScope);
     setSelectedCategory(urlCategory);
     setSelectedCity(urlCity);
-    setSelectedDistrict(urlDistrict);
-    setSelectedNeighborhood(urlNeighborhood);
-  }, [urlScope, urlCategory, urlCity, urlDistrict, urlNeighborhood]);
+    setSelectedBrand(urlBrand);
+    setSelectedModel(urlModel);
+  }, [urlScope, urlCategory, urlCity, urlBrand, urlModel]);
 
   // URL'den ?new=true gelirse dialog aç
   useEffect(() => {
@@ -156,7 +158,7 @@ export default function FeedPage() {
     fetchProfile();
   }, []);
 
-  // Filtre değiştiğinde URL'i güncelle ve ilanları yeniden al
+  // Filtre değiştiğinde URL'i güncelle ve gönderileri yeniden al
   useEffect(() => {
     if (profile) {
       // URL'i güncelle
@@ -164,17 +166,17 @@ export default function FeedPage() {
         scope: scope !== "my" ? scope : null,
         category: selectedCategory || null,
         city: selectedCity?.toString() || null,
-        district: selectedDistrict?.toString() || null,
-        neighborhood: selectedNeighborhood?.toString() || null,
+        brand: selectedBrand?.toString() || null,
+        model: selectedModel?.toString() || null,
       });
 
-      // İlanları yeniden al
+      // Gönderileri yeniden al
       setPosts([]);
       setPage(1);
       setHasMore(true);
       fetchPosts(1, true);
     }
-  }, [scope, selectedCategory, selectedCity, selectedDistrict, selectedNeighborhood, profile]);
+  }, [scope, selectedCategory, selectedCity, selectedBrand, selectedModel, profile]);
 
   // Infinite scroll observer
   const lastPostRef = useCallback(
@@ -218,7 +220,7 @@ export default function FeedPage() {
 
       const profileData = await profileRes.json();
 
-      if (!profileData.profile?.neighborhood) {
+      if (!profileData.profile?.city) {
         window.location.href = "/onboarding";
         return;
       }
@@ -232,23 +234,20 @@ export default function FeedPage() {
         setCities(citiesData.cities);
       }
 
-      // URL'den gelen city varsa ilçeleri yükle
-      const urlCity = searchParams.get("city");
-      if (urlCity) {
-        const districtsRes = await fetch(`/api/locations/districts/${urlCity}`);
-        if (districtsRes.ok) {
-          const districtsData = await districtsRes.json();
-          setDistricts(districtsData.districts);
-        }
+      // Markaları al
+      const brandsRes = await fetch("/api/locations/brands");
+      if (brandsRes.ok) {
+        const brandsData = await brandsRes.json();
+        setBrands(brandsData.brands);
+      }
 
-        // URL'den gelen district varsa mahalleleri yükle
-        const urlDistrict = searchParams.get("district");
-        if (urlDistrict) {
-          const neighborhoodsRes = await fetch(`/api/locations/neighborhoods/${urlDistrict}`);
-          if (neighborhoodsRes.ok) {
-            const neighborhoodsData = await neighborhoodsRes.json();
-            setNeighborhoods(neighborhoodsData.neighborhoods);
-          }
+      // URL'den gelen brand varsa modelleri yükle
+      const urlBrand = searchParams.get("brand");
+      if (urlBrand) {
+        const modelsRes = await fetch(`/api/locations/models/${urlBrand}`);
+        if (modelsRes.ok) {
+          const modelsData = await modelsRes.json();
+          setModels(modelsData.models);
         }
       }
     } catch {
@@ -277,13 +276,15 @@ export default function FeedPage() {
       }
 
       if (scope === "all") {
-        if (selectedNeighborhood) {
-          params.set("neighborhoodId", selectedNeighborhood.toString());
-        } else if (selectedDistrict) {
-          params.set("districtId", selectedDistrict.toString());
-        } else if (selectedCity) {
+        if (selectedCity) {
           params.set("cityId", selectedCity.toString());
         }
+      }
+
+      if (selectedModel) {
+        params.set("modelId", selectedModel.toString());
+      } else if (selectedBrand) {
+        params.set("brandId", selectedBrand.toString());
       }
 
       const postsRes = await fetch(`/api/posts?${params.toString()}`, {
@@ -303,73 +304,43 @@ export default function FeedPage() {
         setHasMore(postsData.pagination.page < postsData.pagination.totalPages);
       }
     } catch {
-      toast.error("İlanlar yüklenemedi");
+      toast.error("Gönderiler yüklenemedi");
     } finally {
       setFetching(false);
       setLoadingMore(false);
     }
   }
 
-  // İl değiştiğinde ilçeleri getir
-  const prevCityRef = useRef<number | null>(null);
+
+  // Marka değiştiğinde modelleri getir
+  const prevBrandRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!selectedCity) {
-      setDistricts([]);
-      setSelectedDistrict(null);
-      setNeighborhoods([]);
-      setSelectedNeighborhood(null);
-      prevCityRef.current = null;
+    if (!selectedBrand) {
+      setModels([]);
+      setSelectedModel(null);
+      prevBrandRef.current = null;
       return;
     }
 
-    async function fetchDistricts() {
-      const res = await fetch(`/api/locations/districts/${selectedCity}`);
+    async function fetchModels() {
+      const res = await fetch(`/api/locations/models/${selectedBrand}`);
       if (res.ok) {
         const data = await res.json();
-        setDistricts(data.districts);
+        setModels(data.models);
       }
     }
 
-    fetchDistricts();
+    fetchModels();
     
-    // Sadece kullanıcı il değiştirdiyse sıfırla (ilk yükleme değilse)
-    if (prevCityRef.current !== null && prevCityRef.current !== selectedCity) {
-    setSelectedDistrict(null);
-    setNeighborhoods([]);
-    setSelectedNeighborhood(null);
+    // Sadece kullanıcı marka değiştirdiyse sıfırla (ilk yükleme değilse)
+    if (prevBrandRef.current !== null && prevBrandRef.current !== selectedBrand) {
+      setSelectedModel(null);
     }
-    prevCityRef.current = selectedCity;
-  }, [selectedCity]);
-
-  // İlçe değiştiğinde mahalleleri getir
-  const prevDistrictRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!selectedDistrict) {
-      setNeighborhoods([]);
-      setSelectedNeighborhood(null);
-      prevDistrictRef.current = null;
-      return;
-    }
-
-    async function fetchNeighborhoods() {
-      const res = await fetch(`/api/locations/neighborhoods/${selectedDistrict}`);
-      if (res.ok) {
-        const data = await res.json();
-        setNeighborhoods(data.neighborhoods);
-      }
-    }
-
-    fetchNeighborhoods();
-    
-    // Sadece kullanıcı ilçe değiştirdiyse sıfırla (ilk yükleme değilse)
-    if (prevDistrictRef.current !== null && prevDistrictRef.current !== selectedDistrict) {
-    setSelectedNeighborhood(null);
-    }
-    prevDistrictRef.current = selectedDistrict;
-  }, [selectedDistrict]);
+    prevBrandRef.current = selectedBrand;
+  }, [selectedBrand]);
 
   async function handleDelete(postId: string) {
-    if (!confirm("Bu ilanı silmek istediğinize emin misiniz?")) return;
+    if (!confirm("Bu gönderiyi silmek istediğinize emin misiniz?")) return;
 
     setDeletingId(postId);
 
@@ -381,11 +352,11 @@ export default function FeedPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "İlan silinemedi");
+        throw new Error(data.message || "Gönderi silinemedi");
       }
 
       setPosts(posts.filter((p) => p.id !== postId));
-      toast.success("İlan silindi");
+      toast.success("Gönderi silindi");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Bir hata oluştu";
       toast.error(message);
@@ -401,7 +372,8 @@ export default function FeedPage() {
     const url = `${window.location.origin}/post/${post.id}`;
     const text = `${post.content.slice(0, 100)}${post.content.length > 100 ? "..." : ""}`;
     const category = CATEGORY_LABELS[post.category];
-    const title = `${category?.emoji || ""} ${category?.label || "İlan"} - Mahalle`;
+    const vehicle = post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : "";
+    const title = `${category?.emoji || ""} ${category?.label || "Gönderi"}${vehicle} | Araç Platformu`;
 
     // Web Share API destekleniyorsa
     if (navigator.share) {
@@ -470,7 +442,7 @@ export default function FeedPage() {
     );
   }
 
-  const activeFilterCount = [selectedCategory, selectedCity, selectedDistrict, selectedNeighborhood].filter(Boolean).length;
+  const activeFilterCount = [selectedCategory, selectedCity, selectedBrand, selectedModel].filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -479,8 +451,8 @@ export default function FeedPage() {
         <div className="max-w-xl mx-auto px-4">
           <div className="flex items-center justify-between h-12">
             <span className="text-sm font-medium">
-              {scope === "my" ? (profile?.neighborhood?.name || "Mahallem") : "Keşfet"}
-            </span>
+              {scope === "my" ? (profile?.city?.name || "İlim") : "Keşfet"}
+              </span>
             <button
               onClick={() => setShowFilters(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm hover:bg-muted"
@@ -535,7 +507,7 @@ export default function FeedPage() {
               </div>
 
               {/* Konum (sadece Keşfet modunda) */}
-              {scope === "all" && (
+                {scope === "all" && (
                 <div className="space-y-3">
                   <label className="text-xs font-medium text-muted-foreground">Konum</label>
                   
@@ -550,36 +522,39 @@ export default function FeedPage() {
                       <option key={city.id} value={city.id}>{city.name}</option>
                     ))}
                   </select>
-
-                  {/* İlçe */}
-                  {selectedCity && (
-                    <select
-                      value={selectedDistrict || ""}
-                      onChange={(e) => setSelectedDistrict(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                      <option value="">Tüm İlçeler</option>
-                      {districts.map((district) => (
-                        <option key={district.id} value={district.id}>{district.name}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  {/* Mahalle */}
-                  {selectedDistrict && (
-                    <select
-                      value={selectedNeighborhood || ""}
-                      onChange={(e) => setSelectedNeighborhood(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                      <option value="">Tüm Mahalleler</option>
-                      {neighborhoods.map((n) => (
-                        <option key={n.id} value={n.id}>{n.name}</option>
-                      ))}
-                    </select>
-                  )}
                 </div>
               )}
+
+              {/* Marka ve Model */}
+              <div className="space-y-3">
+                <label className="text-xs font-medium text-muted-foreground">Araç</label>
+                
+                {/* Marka */}
+                <select
+                  value={selectedBrand || ""}
+                  onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Tüm Markalar</option>
+                  {brands.map((brand) => (
+                    <option key={brand.id} value={brand.id}>{brand.name}</option>
+                  ))}
+                </select>
+
+                {/* Model */}
+                {selectedBrand && (
+                  <select
+                    value={selectedModel || ""}
+                    onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="">Tüm Modeller</option>
+                    {models.map((model) => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
               {/* Aktif filtreler özeti */}
               {activeFilterCount > 0 && (
@@ -590,8 +565,8 @@ export default function FeedPage() {
                       onClick={() => {
                         setSelectedCategory("");
                         setSelectedCity(null);
-                        setSelectedDistrict(null);
-                        setSelectedNeighborhood(null);
+                        setSelectedBrand(null);
+                        setSelectedModel(null);
                       }}
                       className="text-xs text-destructive hover:underline"
                     >
@@ -609,7 +584,7 @@ export default function FeedPage() {
                 Uygula
               </Button>
             </div>
-          </div>
+        </div>
         </DrawerContent>
       </Drawer>
 
@@ -623,7 +598,7 @@ export default function FeedPage() {
         ) : posts.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">🏘️</p>
-            <p className="text-muted-foreground">Henüz ilan yok</p>
+            <p className="text-muted-foreground">Henüz gönderi yok</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -662,7 +637,13 @@ export default function FeedPage() {
                         
                         {scope === "all" && post.location && (
                           <p className="text-xs text-muted-foreground mb-2">
-                            📍 {post.location.neighborhood}, {post.location.district}
+                            📍 {post.location.city}
+                          </p>
+                        )}
+                        
+                        {post.vehicle && (
+                          <p className="text-xs text-muted-foreground mb-2">
+                            🚗 {post.vehicle.brand} {post.vehicle.model}
                           </p>
                         )}
 
@@ -685,16 +666,16 @@ export default function FeedPage() {
                               </svg>
                             </button>
                             
-                            {/* Sil (sadece kendi ilanları) */}
+                            {/* Sil (sadece kendi gönderileri) */}
                             {post.user.id === profile?.id && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleDelete(post.id);
-                                }}
-                                disabled={deletingId === post.id}
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleDelete(post.id);
+                              }}
+                              disabled={deletingId === post.id}
                                 className="text-muted-foreground hover:text-destructive"
-                              >
+                            >
                                 {deletingId === post.id ? (
                                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
@@ -702,8 +683,8 @@ export default function FeedPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
                                 )}
-                              </button>
-                            )}
+                            </button>
+                          )}
                           </div>
                         </div>
                       </div>
@@ -723,7 +704,7 @@ export default function FeedPage() {
             {/* End */}
             {!hasMore && posts.length > 0 && (
               <p className="text-center text-sm text-muted-foreground py-6">
-                Tüm ilanları gördünüz
+                Tüm gönderileri gördünüz
               </p>
             )}
           </div>

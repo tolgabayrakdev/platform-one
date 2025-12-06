@@ -7,6 +7,7 @@ const locationController = new LocationController();
 // Public routes - auth gerektirmez
 router.get('/cities', locationController.getCities.bind(locationController));
 router.get('/districts/:cityId', locationController.getDistricts.bind(locationController));
-router.get('/neighborhoods/:districtId', locationController.getNeighborhoods.bind(locationController));
+router.get('/brands', locationController.getBrands.bind(locationController));
+router.get('/models/:brandId', locationController.getModels.bind(locationController));
 
 export default router;

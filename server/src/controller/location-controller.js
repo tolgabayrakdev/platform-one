@@ -39,19 +39,32 @@ export default class LocationController {
   }
 
   /**
-   * Mahalleleri getir
-   * GET /api/locations/neighborhoods/:districtId
+   * Tüm araç markalarını getir
+   * GET /api/locations/brands
    */
-  async getNeighborhoods(req, res, next) {
+  async getBrands(req, res, next) {
     try {
-      const { districtId } = req.params;
+      const brands = await this.locationService.getBrands();
+      res.status(200).json({ brands });
+    } catch (error) {
+      next(error);
+    }
+  }
 
-      if (!districtId) {
-        throw new HttpException(400, 'İlçe ID zorunludur');
+  /**
+   * Bir markaya ait modelleri getir
+   * GET /api/locations/models/:brandId
+   */
+  async getModels(req, res, next) {
+    try {
+      const { brandId } = req.params;
+
+      if (!brandId) {
+        throw new HttpException(400, 'Marka ID zorunludur');
       }
 
-      const neighborhoods = await this.locationService.getNeighborhoods(districtId);
-      res.status(200).json({ neighborhoods });
+      const models = await this.locationService.getModels(brandId);
+      res.status(200).json({ models });
     } catch (error) {
       next(error);
     }
