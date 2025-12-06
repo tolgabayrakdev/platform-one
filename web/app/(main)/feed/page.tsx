@@ -109,9 +109,7 @@ export default function FeedPage() {
   const [selectedCity, setSelectedCity] = useState<number | null>(urlCity);
   const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
   const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
-  const [showFilters, setShowFilters] = useState(
-    !!(searchParams.get("category") || searchParams.get("city") || searchParams.get("brand"))
-  );
+  const [showFilters, setShowFilters] = useState(false);
 
   // Infinite scroll
   const [page, setPage] = useState(1);
