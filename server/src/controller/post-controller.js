@@ -17,30 +17,34 @@ export default class PostController {
   async getPosts(req, res, next) {
     try {
       const userId = req.user?.userId;
-
-      if (!userId) {
-        throw new HttpException(401, 'Yetkilendirme gerekli');
-      }
-
-      // Kullanıcının il bilgisini al
-      const profile = await this.userService.getProfile(userId);
-
-      if (!profile.city) {
-        throw new HttpException(400, 'Önce il seçmelisiniz');
-      }
-
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
-      const scope = req.query.scope || 'my'; // 'my' veya 'all'
 
       // Filtreler
       const filters = {};
 
+      // Auth varsa kullanıcı bilgilerini al
+      if (userId) {
+        const profile = await this.userService.getProfile(userId);
+        const scope = req.query.scope || 'my'; // 'my' veya 'all'
+
       if (scope === 'my') {
-        // Kendi ili
+          // Kendi ili - ama city yoksa all'a geç
+          if (profile.city) {
         filters.cityId = profile.city.id;
+          } else {
+            // City yoksa tüm Türkiye göster
+            // Filtre yoksa tüm Türkiye
+          }
+        } else {
+          // Tüm Türkiye veya filtreli
+          if (req.query.cityId) {
+            filters.cityId = parseInt(req.query.cityId);
+          }
+          // Filtre yoksa tüm Türkiye
+        }
       } else {
-        // Tüm Türkiye veya filtreli
+        // Auth yoksa her zaman 'all' scope
         if (req.query.cityId) {
           filters.cityId = parseInt(req.query.cityId);
         }

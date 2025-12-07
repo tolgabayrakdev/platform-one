@@ -152,7 +152,7 @@ export default function MyPostsPage() {
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-xl mx-auto px-4 h-12 flex items-center justify-between">
+        <div className="max-w-3xl mx-auto px-4 h-12 flex items-center justify-between">
             <span className="font-semibold">Gönderilerim</span>
           <span className="text-sm text-muted-foreground">
             {posts.length} gönderi
@@ -161,7 +161,7 @@ export default function MyPostsPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-xl mx-auto">
+      <main className="max-w-3xl mx-auto">
         {posts.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">📭</p>

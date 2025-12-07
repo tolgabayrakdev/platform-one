@@ -27,3 +27,28 @@ export const verifyToken = (req, res, next) => {
 
 // Backward compatibility için eski isim
 export const authenticateToken = verifyToken;
+
+/**
+ * Optional auth middleware - token varsa doğrula, yoksa devam et
+ */
+export const optionalAuth = (req, res, next) => {
+  try {
+    const token = req.cookies.access_token || req.query.token;
+
+    if (token) {
+      jwt.verify(token, process.env.JWT_SECRET_KEY || 'your-secret-key', (error, user) => {
+        if (!error) {
+          req.user = user;
+        }
+        // Hata olsa bile devam et (auth optional)
+        next();
+      });
+    } else {
+      // Token yoksa da devam et
+      next();
+    }
+  } catch (error) {
+    // Hata olsa bile devam et
+    next();
+  }
+};

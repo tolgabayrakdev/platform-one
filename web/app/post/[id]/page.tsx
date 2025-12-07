@@ -149,14 +149,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-xl mx-auto px-4 h-12 flex items-center gap-3">
+        <div className="max-w-3xl mx-auto px-4 h-12 flex items-center gap-3">
           <BackButton />
           <span className="font-semibold">Gönderi</span>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-xl mx-auto">
+      <main className="max-w-3xl mx-auto">
         <article className="px-4 py-4">
           {/* User */}
           <div className="flex items-center gap-3 mb-4">

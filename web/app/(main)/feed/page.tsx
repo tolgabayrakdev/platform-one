@@ -95,7 +95,7 @@ export default function FeedPage() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   // Filtreler - URL'den oku
-  const urlScope = (searchParams.get("scope") as "my" | "all") || "my";
+  const urlScope = (searchParams.get("scope") as "my" | "all") || "all";
   const urlCategory = searchParams.get("category") || "";
   const urlCity = searchParams.get("city") ? Number(searchParams.get("city")) : null;
   const urlBrand = searchParams.get("brand") ? Number(searchParams.get("brand")) : null;
@@ -158,32 +158,37 @@ export default function FeedPage() {
   // Sayfa yüklendiğinde
   useEffect(() => {
     fetchProfile();
+    // İlk yüklemede posts'u da al (auth olmasa bile)
+    fetchPosts(1, true);
   }, []);
 
   // Filtre değiştiğinde URL'i güncelle ve gönderileri yeniden al
   useEffect(() => {
-    if (profile) {
-      // URL'i güncelle
-      updateURL({
-        scope: scope !== "my" ? scope : null,
-        category: selectedCategory || null,
-        city: selectedCity?.toString() || null,
-        brand: selectedBrand?.toString() || null,
-        model: selectedModel?.toString() || null,
-      });
+    // Profile yoksa da çalış (auth olmayabilir)
+    // Auth yoksa scope her zaman "all" olmalı
+    const effectiveScope = profile ? scope : "all";
+    
+    // URL'i güncelle
+    updateURL({
+      scope: effectiveScope !== "all" ? effectiveScope : null,
+      category: selectedCategory || null,
+      city: selectedCity?.toString() || null,
+      brand: selectedBrand?.toString() || null,
+      model: selectedModel?.toString() || null,
+    });
 
-      // Gönderileri yeniden al
-      setPosts([]);
-      setPage(1);
-      setHasMore(true);
-      fetchPosts(1, true);
-    }
+    // Gönderileri yeniden al
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchPosts(1, true);
   }, [scope, selectedCategory, selectedCity, selectedBrand, selectedModel, profile]);
 
-  // Infinite scroll observer
+  // Infinite scroll observer - Sadece auth varsa
   const lastPostRef = useCallback(
     (node: HTMLElement | null) => {
-      if (loadingMore) return;
+      // Auth olmayanlar için infinite scroll yok
+      if (!profile || loadingMore) return;
 
       if (observerRef.current) {
         observerRef.current.disconnect();
@@ -199,15 +204,15 @@ export default function FeedPage() {
         observerRef.current.observe(node);
       }
     },
-    [loadingMore, hasMore]
+    [loadingMore, hasMore, profile]
   );
 
-  // Sayfa değiştiğinde daha fazla yükle
+  // Sayfa değiştiğinde daha fazla yükle - Sadece auth varsa
   useEffect(() => {
     if (page > 1 && profile) {
       fetchPosts(page, false);
     }
-  }, [page]);
+  }, [page, profile]);
 
   async function fetchUnreadNotificationCount() {
     try {
@@ -225,35 +230,31 @@ export default function FeedPage() {
 
   async function fetchProfile() {
     try {
+      // Profile fetch'i optional - auth olmayabilir
       const profileRes = await fetch("/api/users/profile", {
         credentials: "include",
       });
 
-      if (!profileRes.ok) {
-        window.location.href = "/sign-in";
-        return;
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+
+        if (profileData.profile?.city) {
+          setProfile(profileData.profile);
+          
+          // Bildirim sayısını al (sadece auth varsa)
+          fetchUnreadNotificationCount();
+        }
       }
+      // Auth yoksa da devam et
 
-      const profileData = await profileRes.json();
-
-      if (!profileData.profile?.city) {
-        window.location.href = "/onboarding";
-        return;
-      }
-
-      setProfile(profileData.profile);
-      
-      // Bildirim sayısını al
-      fetchUnreadNotificationCount();
-
-      // İlleri al
+      // İlleri al (her zaman)
       const citiesRes = await fetch("/api/locations/cities");
       if (citiesRes.ok) {
         const citiesData = await citiesRes.json();
         setCities(citiesData.cities);
       }
 
-      // Markaları al
+      // Markaları al (her zaman)
       const brandsRes = await fetch("/api/locations/brands");
       if (brandsRes.ok) {
         const brandsData = await brandsRes.json();
@@ -270,7 +271,7 @@ export default function FeedPage() {
         }
       }
     } catch {
-      toast.error("Veriler yüklenemedi");
+      // Hata olsa bile devam et
     } finally {
       setLoading(false);
     }
@@ -286,15 +287,19 @@ export default function FeedPage() {
 
     try {
       const params = new URLSearchParams();
-      params.set("scope", scope);
+      // Auth yoksa her zaman "all" scope
+      const effectiveScope = profile ? scope : "all";
+      params.set("scope", effectiveScope);
       params.set("page", pageNum.toString());
-      params.set("limit", "20");
+      // Auth olmayanlar için limit 15, auth olanlar için 20
+      const limit = profile ? "20" : "15";
+      params.set("limit", limit);
 
       if (selectedCategory) {
         params.set("category", selectedCategory);
       }
 
-      if (scope === "all") {
+      if (effectiveScope === "all") {
         if (selectedCity) {
           params.set("cityId", selectedCity.toString());
         }
@@ -320,7 +325,13 @@ export default function FeedPage() {
         }
 
         // Daha fazla var mı kontrol et
-        setHasMore(postsData.pagination.page < postsData.pagination.totalPages);
+        // Auth olmayanlar için sadece ilk sayfada kontrol et (15 limit)
+        if (profile) {
+          setHasMore(postsData.pagination.page < postsData.pagination.totalPages);
+        } else {
+          // Auth olmayanlar için: eğer 15 gönderi geldiyse ve toplam sayfa > 1 ise daha fazla var
+          setHasMore(postsData.posts.length === 15 && postsData.pagination.totalPages > 1);
+        }
       }
     } catch {
       toast.error("Gönderiler yüklenemedi");
@@ -537,26 +548,38 @@ export default function FeedPage() {
     <div className="min-h-screen bg-background">
       {/* Header - Minimal */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-xl mx-auto px-4">
+        <div className="max-w-3xl mx-auto px-4">
           <div className="flex items-center justify-between h-12">
             <span className="text-sm font-medium">
-              {scope === "my" ? (profile?.city?.name || "Anasayfa") : "Keşfet"}
+              {profile && scope === "my" ? (profile.city?.name || "Anasayfa") : "Keşfet"}
               </span>
             <div className="flex items-center gap-2">
-              {/* Bildirimler */}
-              <Link
-                href="/notifications"
-                className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {unreadNotificationCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
-                    {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                  </span>
-                )}
-              </Link>
+              {/* Bildirimler - Sadece auth varsa */}
+              {profile && (
+                <Link
+                  href="/notifications"
+                  className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
+                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+              
+              {/* Giriş Yap - Auth yoksa */}
+              {!profile && (
+                <Link
+                  href="/sign-in"
+                  className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                >
+                  Giriş Yap
+                </Link>
+              )}
               
               {/* Filtreler */}
               <button
@@ -696,7 +719,7 @@ export default function FeedPage() {
       </Drawer>
 
       {/* Content */}
-      <main className="max-w-xl mx-auto pb-24">
+      <main className="max-w-3xl mx-auto pb-24">
         {/* Posts */}
         {fetching ? (
           <div className="flex justify-center py-16">
@@ -717,11 +740,13 @@ export default function FeedPage() {
               };
 
               const isLast = index === posts.length - 1;
+              // Infinite scroll sadece auth varsa çalışsın
+              const shouldObserve = isLast && profile;
 
               return (
                 <article
                   key={post.id}
-                  ref={isLast ? lastPostRef : null}
+                  ref={shouldObserve ? lastPostRef : null}
                   className="hover:bg-muted/30"
                 >
                   <Link href={`/post/${post.id}`} className="block px-4 py-4">
@@ -828,14 +853,29 @@ export default function FeedPage() {
             })}
 
             {/* Loading */}
-            {loadingMore && (
+            {loadingMore && profile && (
               <div className="flex justify-center py-6">
                 <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
 
-            {/* End */}
-            {!hasMore && posts.length > 0 && (
+            {/* Auth olmayanlar için "Daha Fazla Gör" butonu */}
+            {!profile && posts.length >= 15 && hasMore && (
+              <div className="px-4 py-8 text-center border-t border-border">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Daha fazla içerik görmek için kayıt olun
+                </p>
+                <Link
+                  href="/sign-up"
+                  className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  Ücretsiz Kayıt Ol
+                </Link>
+              </div>
+            )}
+
+            {/* End - Auth olanlar için */}
+            {profile && !hasMore && posts.length > 0 && (
               <p className="text-center text-sm text-muted-foreground py-6">
                 Tüm gönderileri gördünüz
               </p>
@@ -844,18 +884,20 @@ export default function FeedPage() {
         )}
       </main>
 
-      {/* Create Post Dialog */}
-      <CreatePostDialog
-        open={showCreateDialog}
-        onClose={() => setShowCreateDialog(false)}
-        onCreated={() => {
-          setShowCreateDialog(false);
-          setPosts([]);
-          setPage(1);
-          setHasMore(true);
-          fetchPosts(1, true);
-        }}
-      />
+      {/* Create Post Dialog - Sadece auth varsa */}
+      {profile && (
+        <CreatePostDialog
+          open={showCreateDialog}
+          onClose={() => setShowCreateDialog(false)}
+          onCreated={() => {
+            setShowCreateDialog(false);
+            setPosts([]);
+            setPage(1);
+            setHasMore(true);
+            fetchPosts(1, true);
+          }}
+        />
+      )}
     </div>
   );
 }
