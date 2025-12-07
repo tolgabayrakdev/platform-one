@@ -8,7 +8,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const scope = searchParams.get("scope") || "all";
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Auth kontrolü yap
@@ -34,6 +34,21 @@ export default function BottomNav() {
 
   // Yeni gönderi için mevcut scope'u koru
   const newPostHref = isAuthenticated ? `/feed?scope=${scope}&new=true` : "/sign-in";
+
+  // Auth state yüklenene kadar loading göster (flash'ı önlemek için)
+  if (isAuthenticated === null) {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
+        <div className="max-w-xl mx-auto flex items-center justify-around h-14">
+          {/* Loading placeholder - navbar yüksekliğini korumak için */}
+          <div className="flex flex-col items-center gap-0.5 px-3 py-1 opacity-0">
+            <div className="w-6 h-6" />
+            <span className="text-[10px]"> </span>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   if (!isAuthenticated) {
     // Auth olmayanlar için sadece Keşfet ve Giriş Yap

@@ -134,7 +134,7 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-xl mx-auto px-4">
+        <div className="max-w-3xl mx-auto px-4">
           <div className="flex items-center justify-between h-12">
             <div className="flex items-center gap-3">
               <Link href="/feed" className="text-muted-foreground">
@@ -157,7 +157,7 @@ export default function NotificationsPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-xl mx-auto">
+      <main className="max-w-3xl mx-auto">
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <p className="text-4xl mb-3">🔔</p>

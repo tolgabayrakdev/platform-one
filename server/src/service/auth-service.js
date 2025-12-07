@@ -301,7 +301,7 @@ export default class AuthService {
     try {
       // Kullanıcıyı bul
       const userResult = await client.query(
-        'SELECT id, email, phone, password, email_verified, phone_verified, is_verified FROM users WHERE email = $1',
+        'SELECT id, email, phone, password, email_verified, phone_verified, is_verified, is_banned FROM users WHERE email = $1',
         [email]
       );
 
@@ -310,6 +310,11 @@ export default class AuthService {
       }
 
       const user = userResult.rows[0];
+
+      // Ban kontrolü
+      if (user.is_banned) {
+        throw new HttpException(403, 'Hesabınız kapatılmıştır. Platforma erişim izniniz bulunmamaktadır.');
+      }
 
       // Şifre kontrolü
       const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -397,7 +402,7 @@ export default class AuthService {
 
     try {
       const result = await client.query(
-        'SELECT first_name, last_name, email, phone, email_verified, phone_verified, is_verified, created_at FROM users WHERE id = $1',
+        'SELECT first_name, last_name, email, phone, email_verified, phone_verified, is_verified, is_banned, created_at FROM users WHERE id = $1',
         [userId]
       );
 
@@ -405,7 +410,14 @@ export default class AuthService {
         throw new HttpException(404, 'Kullanıcı bulunamadı');
       }
 
-      return result.rows[0];
+      const user = result.rows[0];
+
+      // Ban kontrolü
+      if (user.is_banned) {
+        throw new HttpException(403, 'Hesabınız kapatılmıştır. Platforma erişim izniniz bulunmamaktadır.');
+      }
+
+      return user;
     } catch (error) {
       throw error;
     } finally {

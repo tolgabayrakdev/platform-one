@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Confetti from "react-confetti";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -20,8 +22,12 @@ interface Model {
 }
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
   const [cities, setCities] = useState<City[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -30,6 +36,32 @@ export default function OnboardingPage() {
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
   const [selectedModel, setSelectedModel] = useState<number | null>(null);
+  const [acceptedRules, setAcceptedRules] = useState(false);
+
+  // Window size'ı al (confetti için)
+  useEffect(() => {
+    function updateSize() {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    }
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  // Geri sayım efekti
+  useEffect(() => {
+    if (countdown === null) return;
+
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      // Geri sayım bitti, feed'e yönlendir
+      router.push("/feed");
+    }
+  }, [countdown, router]);
 
   // Sayfa yüklendiğinde auth kontrolü ve illeri getir
   useEffect(() => {
@@ -123,6 +155,11 @@ export default function OnboardingPage() {
       return;
     }
 
+    if (!acceptedRules) {
+      toast.error("Lütfen topluluk kurallarını kabul edin");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -152,10 +189,11 @@ export default function OnboardingPage() {
         throw new Error(data.message || "Araç bilgisi kaydedilemedi");
       }
 
-      window.location.href = "/feed";
+      // Başarılı! Confetti göster ve geri sayım başlat
+      setShowSuccess(true);
+      setCountdown(3);
     } catch (error: any) {
       toast.error(error.message || "Bir hata oluştu");
-    } finally {
       setSaving(false);
     }
   }
@@ -166,6 +204,35 @@ export default function OnboardingPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm text-muted-foreground">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Başarı ekranı
+  if (showSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 relative overflow-hidden">
+        {windowSize.width > 0 && windowSize.height > 0 && (
+          <Confetti
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={false}
+            numberOfPieces={200}
+            gravity={0.3}
+          />
+        )}
+        <div className="text-center space-y-6 z-10">
+          <div className="text-6xl mb-4">🎉</div>
+          <h1 className="text-3xl font-bold">Hazırsınız!</h1>
+          {countdown !== null && countdown > 0 && (
+            <div className="space-y-2">
+              <p className="text-muted-foreground">Ana sayfaya yönlendiriliyorsunuz...</p>
+              <div className="text-6xl font-bold text-primary animate-pulse">
+                {countdown}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -236,9 +303,36 @@ export default function OnboardingPage() {
           </div>
           )}
 
+          {/* Topluluk Kuralları */}
+          <div className="mt-6 pt-6 border-t border-border">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Topluluk Kuralları</h3>
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Lütfen aşağıdaki kuralları okuyun ve kabul edin:</p>
+                <ul className="space-y-1.5 list-disc list-inside">
+                  <li>İnceltici, cinsel içerik paylaşmak yasaktır</li>
+                  <li>Argo, küfür ve hakaret içeren içerikler paylaşılamaz</li>
+                  <li>Topluluk kurallarına uymayan içerikler silinir ve hesap kapatılabilir</li>
+                  <li>Saygılı ve yapıcı bir dil kullanılmalıdır</li>
+                </ul>
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptedRules}
+                  onChange={(e) => setAcceptedRules(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-ring cursor-pointer"
+                />
+                <span className="text-sm text-foreground group-hover:text-foreground/80">
+                  Topluluk kurallarını okudum ve kabul ediyorum. Kurallara uymadığım takdirde hesabımın kapatılabileceğini biliyorum.
+                </span>
+              </label>
+            </div>
+          </div>
+
           <Button
             onClick={handleSubmit}
-            disabled={!selectedCity || !selectedBrand || !selectedModel || saving}
+            disabled={!selectedCity || !selectedBrand || !selectedModel || !acceptedRules || saving}
             className="w-full mt-4"
           >
             {saving ? "Kaydediliyor..." : "Devam Et"}

@@ -157,34 +157,52 @@ export default function FeedPage() {
     }
   }, [urlNew, router, searchParams]);
 
-  // Sayfa yüklendiğinde
+  // Sayfa yüklendiğinde - profile ve postları paralel yükle
   useEffect(() => {
     fetchProfile();
-    // İlk yüklemede posts'u da al (auth olmasa bile)
+    // Postları da hemen yükle (profile beklemeyi bekleme)
     fetchPosts(1, true);
+    initialLoadDone.current = true;
   }, []);
 
-  // Filtre değiştiğinde URL'i güncelle ve gönderileri yeniden al
+  // Profile yüklendiğinde scope'u kontrol et
   useEffect(() => {
-    // Profile yoksa da çalış (auth olmayabilir)
-    // Auth yoksa scope her zaman "all" olmalı
-    const effectiveScope = profile ? scope : "all";
+    if (!initialLoadDone.current) return;
     
-      // URL'i güncelle
-      updateURL({
-      scope: effectiveScope !== "all" ? effectiveScope : null,
-        category: selectedCategory || null,
-        city: selectedCity?.toString() || null,
-        brand: selectedBrand?.toString() || null,
-        model: selectedModel?.toString() || null,
-      });
-
-      // Gönderileri yeniden al
+    // Profile yüklendi ve scope "my" ise postları yeniden yükle
+    // (İlk yüklemede profile null olduğu için scope="all" kullanıldı)
+    if (profile && scope === "my") {
       setPosts([]);
       setPage(1);
       setHasMore(true);
       fetchPosts(1, true);
-  }, [scope, selectedCategory, selectedCity, selectedBrand, selectedModel, profile]);
+    }
+  }, [profile, scope]);
+
+  // Filtre değiştiğinde gönderileri yeniden al
+  useEffect(() => {
+    // İlk yüklemede çalışmasın (yukarıdaki useEffect zaten yüklüyor)
+    if (!initialLoadDone.current) return;
+
+    // Profile yoksa da çalış (auth olmayabilir)
+    // Auth yoksa scope her zaman "all" olmalı
+    const effectiveScope = profile ? scope : "all";
+    
+    // URL'i güncelle
+    updateURL({
+      scope: effectiveScope !== "all" ? effectiveScope : null,
+      category: selectedCategory || null,
+      city: selectedCity?.toString() || null,
+      brand: selectedBrand?.toString() || null,
+      model: selectedModel?.toString() || null,
+    });
+
+    // Gönderileri yeniden al
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchPosts(1, true);
+  }, [scope, selectedCategory, selectedCity, selectedBrand, selectedModel]);
 
   // Infinite scroll observer - Sadece auth varsa
   const lastPostRef = useCallback(
@@ -321,9 +339,18 @@ export default function FeedPage() {
         const postsData = await postsRes.json();
         
         if (reset) {
-          setPosts(postsData.posts);
+          // Duplicate'leri önlemek için unique ID'lere göre filtrele
+          const uniquePosts = postsData.posts.filter((post: Post, index: number, self: Post[]) => 
+            index === self.findIndex((p: Post) => p.id === post.id)
+          );
+          setPosts(uniquePosts);
         } else {
-          setPosts((prev) => [...prev, ...postsData.posts]);
+          // Yeni post'ları eklerken duplicate'leri önle
+          setPosts((prev) => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newPosts = postsData.posts.filter((post: Post) => !existingIds.has(post.id));
+            return [...prev, ...newPosts];
+          });
         }
 
         // Daha fazla var mı kontrol et
@@ -556,7 +583,7 @@ export default function FeedPage() {
               {profile && scope === "my" ? (profile.city?.name || "Anasayfa") : "Keşfet"}
               </span>
             <div className="flex items-center gap-2">
-              {/* Bildirimler - Sadece auth varsa */}
+              {/* Bildirimler - Sadece auth olanlar için */}
               {profile && (
               <Link
                 href="/notifications"

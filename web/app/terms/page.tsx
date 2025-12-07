@@ -55,17 +55,29 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">3. Kullanıcı İçeriği</h2>
+            <h2 className="text-2xl font-bold mb-4">3. Kullanıcı İçeriği ve Topluluk Kuralları</h2>
             <p className="text-foreground/90 mb-4">
               Platformda paylaştığınız içeriklerden siz sorumlusunuz. Aşağıdaki içerikleri paylaşamazsınız:
             </p>
-            <ul className="list-disc pl-6 space-y-2 text-foreground/90">
+            <ul className="list-disc pl-6 space-y-2 text-foreground/90 mb-4">
               <li>Yasadışı, zararlı veya tehdit edici içerik</li>
               <li>Telif hakkı ihlali yapan içerik</li>
               <li>Yanıltıcı veya sahte bilgiler</li>
               <li>Spam veya istenmeyen içerik</li>
               <li>Kişisel saldırı veya nefret söylemi</li>
+              <li>İnceltici, cinsel içerik</li>
+              <li>Argo, küfür ve hakaret içeren içerikler</li>
             </ul>
+            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+              <p className="text-foreground/90 font-medium mb-2">
+                Topluluk Kuralları:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/90">
+                <li>Saygılı ve yapıcı bir dil kullanılmalıdır</li>
+                <li>Topluluk kurallarına uymayan içerikler silinir ve hesap kapatılabilir</li>
+                <li>Kurallara uymadığınız takdirde hesabınız uyarı verilmeksizin kapatılabilir</li>
+              </ul>
+            </div>
           </section>
 
           <section className="mb-8">

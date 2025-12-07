@@ -63,6 +63,12 @@ export function SignInForm() {
 
       if (!response.ok) {
         if (response.status === 403) {
+          // Ban kontrolü - mesajı göster
+          if (data.message?.includes('kapatılmıştır') || data.message?.includes('kapatıldı')) {
+            toast.error(data.message || 'Hesabınız kapatılmıştır');
+            setIsLoading(false);
+            return;
+          }
           // Email doğrulanmamış
           setStep("email-verify");
           setUserEmail(email);
@@ -123,6 +129,12 @@ export function SignInForm() {
       const loginData = await loginResponse.json();
 
       if (!loginResponse.ok) {
+        // Ban kontrolü - mesajı göster
+        if (loginResponse.status === 403 && (loginData.message?.includes('kapatılmıştır') || loginData.message?.includes('kapatıldı'))) {
+          toast.error(loginData.message || 'Hesabınız kapatılmıştır');
+          setIsLoading(false);
+          return;
+        }
         throw new Error(loginData.message || 'Giriş başarısız');
       }
 
@@ -197,6 +209,12 @@ export function SignInForm() {
       const loginData = await loginResponse.json();
 
       if (!loginResponse.ok) {
+        // Ban kontrolü - mesajı göster
+        if (loginResponse.status === 403 && (loginData.message?.includes('kapatılmıştır') || loginData.message?.includes('kapatıldı'))) {
+          toast.error(loginData.message || 'Hesabınız kapatılmıştır');
+          setIsLoading(false);
+          return;
+        }
         throw new Error(loginData.message || 'Giriş başarısız');
       }
 

@@ -28,7 +28,7 @@ function AuthProvider({ children }: AuthProviderProps) {
             clearTimeout(timeoutId);
             
             if (res.status === 200) {
-                // Kullanıcı giriş yapmış, mahalle kontrolü yap
+                // Kullanıcı giriş yapmış, il ve araç kontrolü yap
                 const profileRes = await fetch('/api/users/profile', {
                     credentials: 'include',
                 });
@@ -36,8 +36,8 @@ function AuthProvider({ children }: AuthProviderProps) {
                 if (profileRes.ok) {
                     const data = await profileRes.json();
                     
-                    // Mahalle seçilmemişse ve onboarding'de değilse yönlendir
-                    if (!data.profile?.neighborhood && pathname !== '/onboarding') {
+                    // İl ve araç seçilmemişse ve onboarding'de değilse yönlendir
+                    if ((!data.profile?.city || !data.profile?.vehicle) && pathname !== '/onboarding') {
                         router.push('/onboarding');
                         return;
                     }
@@ -45,6 +45,17 @@ function AuthProvider({ children }: AuthProviderProps) {
 
                 setLoading(false);
                 setRateLimited(false);
+            } else if (res.status === 403) {
+                // Ban kontrolü - mesajı kontrol et
+                const data = await res.json().catch(() => ({}));
+                if (data.message?.includes('kapatılmıştır') || data.message?.includes('kapatıldı')) {
+                    // Banlanmış kullanıcı - sadece sign-in'e yönlendir, mesaj zaten backend'den geliyor
+                    setLoading(false);
+                    router.push('/sign-in');
+                    return;
+                }
+                setLoading(false);
+                router.push('/sign-in');
             } else if (res.status === 429) {
                 setLoading(false);
                 setRateLimited(true);
