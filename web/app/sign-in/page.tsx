@@ -1,5 +1,26 @@
+import { Metadata } from "next";
 import { SignInForm } from "./sign-in-form";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Giriş Yap | Garaj Muhabbet",
+  description: "Garaj Muhabbet hesabınıza giriş yapın. Araç sahipleri topluluğuna katılın, gönderiler paylaşın ve diğer araç sahipleriyle iletişime geçin.",
+  keywords: ["giriş yap", "hesap girişi", "araç platformu giriş", "garaj muhabbet giriş"],
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: "Giriş Yap | Garaj Muhabbet",
+    description: "Garaj Muhabbet hesabınıza giriş yapın.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Giriş Yap | Garaj Muhabbet",
+    description: "Garaj Muhabbet hesabınıza giriş yapın.",
+  },
+};
 
 export default function SignIn() {
   return (

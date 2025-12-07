@@ -168,20 +168,20 @@ export default function FeedPage() {
     // Auth yoksa scope her zaman "all" olmalı
     const effectiveScope = profile ? scope : "all";
     
-    // URL'i güncelle
-    updateURL({
+      // URL'i güncelle
+      updateURL({
       scope: effectiveScope !== "all" ? effectiveScope : null,
-      category: selectedCategory || null,
-      city: selectedCity?.toString() || null,
-      brand: selectedBrand?.toString() || null,
-      model: selectedModel?.toString() || null,
-    });
+        category: selectedCategory || null,
+        city: selectedCity?.toString() || null,
+        brand: selectedBrand?.toString() || null,
+        model: selectedModel?.toString() || null,
+      });
 
-    // Gönderileri yeniden al
-    setPosts([]);
-    setPage(1);
-    setHasMore(true);
-    fetchPosts(1, true);
+      // Gönderileri yeniden al
+      setPosts([]);
+      setPage(1);
+      setHasMore(true);
+      fetchPosts(1, true);
   }, [scope, selectedCategory, selectedCity, selectedBrand, selectedModel, profile]);
 
   // Infinite scroll observer - Sadece auth varsa
@@ -236,13 +236,13 @@ export default function FeedPage() {
       });
 
       if (profileRes.ok) {
-        const profileData = await profileRes.json();
+      const profileData = await profileRes.json();
 
         if (profileData.profile?.city) {
-          setProfile(profileData.profile);
-          
+      setProfile(profileData.profile);
+      
           // Bildirim sayısını al (sadece auth varsa)
-          fetchUnreadNotificationCount();
+      fetchUnreadNotificationCount();
         }
       }
       // Auth yoksa da devam et
@@ -327,7 +327,7 @@ export default function FeedPage() {
         // Daha fazla var mı kontrol et
         // Auth olmayanlar için sadece ilk sayfada kontrol et (15 limit)
         if (profile) {
-          setHasMore(postsData.pagination.page < postsData.pagination.totalPages);
+        setHasMore(postsData.pagination.page < postsData.pagination.totalPages);
         } else {
           // Auth olmayanlar için: eğer 15 gönderi geldiyse ve toplam sayfa > 1 ise daha fazla var
           setHasMore(postsData.posts.length === 15 && postsData.pagination.totalPages > 1);
@@ -473,7 +473,7 @@ export default function FeedPage() {
     const text = `${post.content.slice(0, 100)}${post.content.length > 100 ? "..." : ""}`;
     const category = CATEGORY_LABELS[post.category];
     const vehicle = post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : "";
-    const title = `${category?.emoji || ""} ${category?.label || "Gönderi"}${vehicle} | Araç Platformu`;
+    const title = `${category?.emoji || ""} ${category?.label || "Gönderi"}${vehicle} | Garaj Muhabbet`;
 
     // Web Share API destekleniyorsa
     if (navigator.share) {
@@ -556,19 +556,19 @@ export default function FeedPage() {
             <div className="flex items-center gap-2">
               {/* Bildirimler - Sadece auth varsa */}
               {profile && (
-                <Link
-                  href="/notifications"
-                  className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {unreadNotificationCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
-                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                    </span>
-                  )}
-                </Link>
+              <Link
+                href="/notifications"
+                className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
+                    {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                  </span>
+                )}
+              </Link>
               )}
               
               {/* Giriş Yap - Auth yoksa */}
@@ -886,17 +886,17 @@ export default function FeedPage() {
 
       {/* Create Post Dialog - Sadece auth varsa */}
       {profile && (
-        <CreatePostDialog
-          open={showCreateDialog}
-          onClose={() => setShowCreateDialog(false)}
-          onCreated={() => {
-            setShowCreateDialog(false);
-            setPosts([]);
-            setPage(1);
-            setHasMore(true);
-            fetchPosts(1, true);
-          }}
-        />
+      <CreatePostDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onCreated={() => {
+          setShowCreateDialog(false);
+          setPosts([]);
+          setPage(1);
+          setHasMore(true);
+          fetchPosts(1, true);
+        }}
+      />
       )}
     </div>
   );

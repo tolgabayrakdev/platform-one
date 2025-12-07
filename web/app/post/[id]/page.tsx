@@ -85,12 +85,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const post = await getPost(id);
 
   if (!post) {
-    return { title: "Gönderi Bulunamadı | Araç Platformu" };
+    return { title: "Gönderi Bulunamadı | Garaj Muhabbet" };
   }
 
   const category = CATEGORY_LABELS[post.category] || { label: post.category, emoji: "📌" };
   const vehicle = post.vehicle ? `${post.vehicle.brand} ${post.vehicle.model}` : "";
-  const title = `${category.emoji} ${category.label}${vehicle ? ` - ${vehicle}` : ""} | Araç Platformu`;
+  const title = `${category.emoji} ${category.label}${vehicle ? ` - ${vehicle}` : ""} | Garaj Muhabbet`;
   const description = post.content.slice(0, 160);
 
   return {
@@ -202,7 +202,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
           <div className="flex items-center gap-4 pt-3 border-t border-border">
             <ShareButton 
               postId={post.id}
-              title={`${category.emoji} ${category.label}${post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : ""} | Araç Platformu`}
+              title={`${category.emoji} ${category.label}${post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : ""} | Garaj Muhabbet`}
               text={post.content.slice(0, 100) + (post.content.length > 100 ? "..." : "")}
             />
           </div>

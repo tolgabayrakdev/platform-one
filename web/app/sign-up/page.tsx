@@ -1,5 +1,26 @@
+import { Metadata } from "next";
 import { SignUpForm } from "./sign-up-form";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Kayıt Ol | Garaj Muhabbet - Ücretsiz Hesap Oluştur",
+  description: "Garaj Muhabbet'e ücretsiz kayıt olun. Türkiye'nin en büyük araç sahipleri topluluğuna katılın, gönderiler paylaşın ve diğer araç sahipleriyle iletişime geçin.",
+  keywords: ["kayıt ol", "ücretsiz kayıt", "hesap oluştur", "araç platformu kayıt", "garaj muhabbet kayıt"],
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: "Kayıt Ol | Garaj Muhabbet",
+    description: "Garaj Muhabbet'e ücretsiz kayıt olun ve araç sahipleri topluluğuna katılın.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Kayıt Ol | Garaj Muhabbet",
+    description: "Garaj Muhabbet'e ücretsiz kayıt olun.",
+  },
+};
 
 export default function SignUp() {
   return (

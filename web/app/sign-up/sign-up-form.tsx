@@ -13,6 +13,7 @@ export function SignUpForm() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Giriş yapmış kullanıcıyı kontrol et
   useEffect(() => {
@@ -52,6 +53,12 @@ export function SignUpForm() {
 
     if (password !== confirmPassword) {
       toast.error("Şifreler eşleşmiyor!");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!acceptedTerms) {
+      toast.error("Lütfen kullanım şartlarını ve gizlilik politikasını kabul edin!");
       setIsLoading(false);
       return;
     }
@@ -259,7 +266,29 @@ export function SignUpForm() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <div className="space-y-2">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              required
+            />
+            <span className="text-sm text-foreground/90">
+              <Link href="/terms" target="_blank" className="text-primary hover:underline">
+                Kullanım Şartları
+              </Link>
+              {" ve "}
+              <Link href="/privacy" target="_blank" className="text-primary hover:underline">
+                Gizlilik Politikası
+              </Link>
+              'nı okudum ve kabul ediyorum.
+            </span>
+          </label>
+        </div>
+
+        <Button type="submit" className="w-full" disabled={isLoading || !acceptedTerms}>
           {isLoading ? "Kayıt yapılıyor..." : "Kayıt Ol"}
         </Button>
       </form>
