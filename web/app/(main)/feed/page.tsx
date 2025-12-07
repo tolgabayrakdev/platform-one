@@ -34,6 +34,7 @@ interface Post {
   category: string;
   content: string;
   created_at: string;
+  images?: Array<{ url: string; public_id: string }>;
   comment_count?: number;
   user: User;
   location: Location;
@@ -739,6 +740,22 @@ export default function FeedPage() {
                         )}
 
                         <p className="text-sm mb-2 whitespace-pre-wrap">{post.content}</p>
+
+                        {/* Resimler */}
+                        {post.images && post.images.length > 0 && (
+                          <div className={`mb-2 grid gap-1.5 ${
+                            post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                          }`}>
+                            {post.images.map((img, idx) => (
+                              <img
+                                key={idx}
+                                src={img.url}
+                                alt={`Gönderi resmi ${idx + 1}`}
+                                className="w-full h-48 object-cover rounded-lg border border-border"
+                              />
+                            ))}
+                          </div>
+                        )}
 
                         {/* Category + Actions */}
                         <div className="flex items-center justify-between">

@@ -103,7 +103,9 @@ export default class PostController {
         throw new HttpException(400, 'İçerik zorunludur');
       }
 
-      const post = await this.postService.createPost(userId, profile.city.id, brandId, modelId, category, content);
+      const images = req.body.images || [];
+
+      const post = await this.postService.createPost(userId, profile.city.id, brandId, modelId, category, content, images);
 
       res.status(201).json({
         message: 'Gönderi oluşturuldu',

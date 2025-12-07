@@ -17,6 +17,7 @@ interface Post {
   id: string;
   category: string;
   content: string;
+  images?: Array<{ url: string; public_id: string }>;
   created_at: string;
   location: Location;
   vehicle: Vehicle;
@@ -199,6 +200,22 @@ export default function MyPostsPage() {
 
                     {/* Content */}
                     <p className="text-sm whitespace-pre-wrap mb-2">{post.content}</p>
+
+                    {/* Resimler */}
+                    {post.images && post.images.length > 0 && (
+                      <div className={`mb-2 grid gap-1.5 ${
+                        post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                      }`}>
+                        {post.images.map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img.url}
+                            alt={`Gönderi resmi ${idx + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border border-border"
+                          />
+                        ))}
+                      </div>
+                    )}
 
                     {/* Location & Vehicle */}
                     <div className="space-y-1 mb-3">

@@ -44,6 +44,7 @@ export default class PostService {
         p.id,
         p.category,
         p.content,
+        p.images,
         p.created_at,
         u.id as user_id,
         u.first_name,
@@ -59,7 +60,7 @@ export default class PostService {
       JOIN models m ON p.model_id = m.id
       LEFT JOIN comments cm ON p.id = cm.post_id
       ${whereClause}
-      GROUP BY p.id, u.id, u.first_name, u.last_name, c.name, b.name, m.name
+      GROUP BY p.id, u.id, u.first_name, u.last_name, c.name, b.name, m.name, p.images
       ORDER BY p.created_at DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
       [...params, limit, offset]
@@ -81,6 +82,7 @@ export default class PostService {
         id: post.id,
         category: post.category,
         content: post.content,
+        images: post.images || [],
         created_at: post.created_at,
         comment_count: post.comment_count || 0,
         user: {
@@ -108,7 +110,7 @@ export default class PostService {
   /**
    * Yeni gönderi oluştur
    */
-  async createPost(userId, cityId, brandId, modelId, category, content) {
+  async createPost(userId, cityId, brandId, modelId, category, content, images = []) {
     // Kategori kontrolü
     if (!VALID_CATEGORIES.includes(category)) {
       throw new HttpException(400, `Geçersiz kategori. Geçerli kategoriler: ${VALID_CATEGORIES.join(', ')}`);
@@ -123,11 +125,19 @@ export default class PostService {
       throw new HttpException(400, 'Gönderi içeriği en fazla 500 karakter olabilir');
     }
 
+    // Resim kontrolü
+    if (images && images.length > 2) {
+      throw new HttpException(400, 'En fazla 2 resim ekleyebilirsiniz');
+    }
+
+    // Resimleri JSON formatına çevir
+    const imagesJson = JSON.stringify(images || []);
+
     const result = await pool.query(
-      `INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, category, content, created_at`,
-      [userId, cityId, brandId, modelId, category, content.trim()]
+      `INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content, images)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, category, content, images, created_at`,
+      [userId, cityId, brandId, modelId, category, content.trim(), imagesJson]
     );
 
     return result.rows[0];
@@ -164,6 +174,7 @@ export default class PostService {
         p.id,
         p.category,
         p.content,
+        p.images,
         p.created_at,
         c.name as city_name,
         b.name as brand_name,
@@ -175,7 +186,7 @@ export default class PostService {
       JOIN models m ON p.model_id = m.id
       LEFT JOIN comments cm ON p.id = cm.post_id
       WHERE p.user_id = $1
-      GROUP BY p.id, c.name, b.name, m.name
+      GROUP BY p.id, c.name, b.name, m.name, p.images
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
@@ -190,6 +201,7 @@ export default class PostService {
         id: post.id,
         category: post.category,
         content: post.content,
+        images: post.images || [],
         created_at: post.created_at,
         comment_count: post.comment_count || 0,
         location: {
@@ -218,6 +230,7 @@ export default class PostService {
         p.id,
         p.category,
         p.content,
+        p.images,
         p.created_at,
         p.city_id,
         p.brand_id,
@@ -247,6 +260,7 @@ export default class PostService {
       id: post.id,
       category: post.category,
       content: post.content,
+      images: post.images || [],
       created_at: post.created_at,
       city_id: post.city_id,
       brand_id: post.brand_id,
@@ -275,6 +289,7 @@ export default class PostService {
         p.id,
         p.category,
         p.content,
+        p.images,
         p.created_at,
         u.id as user_id,
         u.first_name,
@@ -291,6 +306,7 @@ export default class PostService {
       id: post.id,
       category: post.category,
       content: post.content,
+      images: post.images || [],
       created_at: post.created_at,
       user: {
         id: post.user_id,

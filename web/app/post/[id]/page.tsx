@@ -10,6 +10,7 @@ interface Post {
   id: string;
   category: string;
   content: string;
+  images?: Array<{ url: string; public_id: string }>;
   created_at: string;
   user: {
     id: string;
@@ -173,6 +174,22 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
           {/* Content */}
           <p className="text-base whitespace-pre-wrap mb-4">{post.content}</p>
+
+          {/* Resimler */}
+          {post.images && post.images.length > 0 && (
+            <div className={`mb-4 grid gap-2 ${
+              post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+            }`}>
+              {post.images.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={img.url}
+                  alt={`Gönderi resmi ${idx + 1}`}
+                  className="w-full h-64 object-cover rounded-lg border border-border"
+                />
+              ))}
+            </div>
+          )}
 
           {/* Meta */}
           <div className="flex flex-col gap-2 text-sm text-muted-foreground mb-4">

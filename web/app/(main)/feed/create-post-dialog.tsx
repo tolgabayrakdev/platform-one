@@ -34,6 +34,13 @@ interface Model {
   name: string;
 }
 
+interface ImageFile {
+  file: File;
+  preview: string;
+  url?: string;
+  public_id?: string;
+}
+
 export default function CreatePostDialog({ open, onClose, onCreated }: CreatePostDialogProps) {
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
@@ -42,6 +49,8 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
   const [models, setModels] = useState<Model[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
   const [selectedModel, setSelectedModel] = useState<number | null>(null);
+  const [images, setImages] = useState<ImageFile[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   // Markaları yükle
   useEffect(() => {
@@ -92,8 +101,86 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
       setContent("");
       setSelectedBrand(null);
       setSelectedModel(null);
+      // Resim preview'larını temizle
+      images.forEach((img) => {
+        if (img.preview) {
+          URL.revokeObjectURL(img.preview);
+        }
+      });
+      setImages([]);
     }
   }, [open]);
+
+  // Resim seçme
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles: ImageFile[] = [];
+    const remainingSlots = 2 - images.length;
+
+    for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        newFiles.push({
+          file,
+          preview: URL.createObjectURL(file)
+        });
+      }
+    }
+
+    if (newFiles.length === 0) {
+      toast.error("Lütfen geçerli bir resim dosyası seçin");
+      return;
+    }
+
+    if (images.length + newFiles.length > 2) {
+      toast.error("En fazla 2 resim ekleyebilirsiniz");
+      return;
+    }
+
+    setImages([...images, ...newFiles]);
+    e.target.value = ""; // Reset input
+  }
+
+  // Resim silme
+  function handleRemoveImage(index: number) {
+    const newImages = [...images];
+    if (newImages[index].preview) {
+      URL.revokeObjectURL(newImages[index].preview);
+    }
+    newImages.splice(index, 1);
+    setImages(newImages);
+  }
+
+  // Resimleri Cloudinary'ye yükle
+  async function uploadImages(): Promise<Array<{ url: string; public_id: string }>> {
+    if (images.length === 0) return [];
+
+    setUploadingImages(true);
+    try {
+      const formData = new FormData();
+      images.forEach((img) => {
+        formData.append('images', img.file);
+      });
+
+      const res = await fetch("/api/upload/images", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Resimler yüklenemedi");
+      }
+
+      const data = await res.json();
+      return data.images;
+    } finally {
+      setUploadingImages(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -121,6 +208,10 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
     setSaving(true);
 
     try {
+      // Önce resimleri yükle
+      const uploadedImages = await uploadImages();
+
+      // Sonra gönderiyi oluştur
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -129,7 +220,8 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
           category, 
           content: content.trim(),
           brandId: selectedBrand,
-          modelId: selectedModel
+          modelId: selectedModel,
+          images: uploadedImages
         }),
       });
 
@@ -215,6 +307,56 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
             )}
           </div>
 
+          {/* Resim Yükleme */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-muted-foreground">
+              Resimler (En fazla 2)
+            </label>
+            
+            {/* Resim Önizlemeleri */}
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {images.map((img, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={img.preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border border-border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Resim Ekleme Butonu */}
+            {images.length < 2 && (
+              <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-input rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-sm text-muted-foreground">
+                  {images.length === 0 ? "Resim Ekle" : "1 Resim Daha Ekle"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
           {/* İçerik */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
@@ -267,10 +409,10 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
             </Button>
               <Button
                 type="submit"
-                disabled={saving || !category || !selectedBrand || !selectedModel || content.trim().length < 10}
+                disabled={saving || uploadingImages || !category || !selectedBrand || !selectedModel || content.trim().length < 10}
                 className="flex-1 h-10 rounded-lg text-sm"
               >
-              {saving ? "Paylaşılıyor..." : "Paylaş"}
+              {saving || uploadingImages ? (uploadingImages ? "Resimler yükleniyor..." : "Paylaşılıyor...") : "Paylaş"}
             </Button>
           </div>
         </form>

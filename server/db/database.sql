@@ -68,6 +68,7 @@ CREATE TABLE posts (
     model_id INTEGER NOT NULL REFERENCES models(id),
     category VARCHAR(20) NOT NULL CHECK (category IN ('satilik', 'kiralik', 'yedek_parca', 'aksesuar', 'servis')),
     content TEXT NOT NULL,
+    images JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
