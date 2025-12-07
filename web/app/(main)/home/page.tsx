@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -12,7 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { toast } from "sonner";
-import CreatePostDialog from "./create-post-dialog";
+import CreatePostDialog from "../feed/create-post-dialog";
 
 interface User {
   id: string;
@@ -51,11 +50,6 @@ interface Profile {
   } | null;
 }
 
-interface City {
-  id: number;
-  name: string;
-}
-
 interface Brand {
   id: number;
   name: string;
@@ -84,7 +78,7 @@ const CATEGORIES = [
   { value: "yardim", label: "Yardım", emoji: "🤝" },
 ];
 
-export default function FeedPage() {
+export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -97,14 +91,13 @@ export default function FeedPage() {
 
   // Filtreler - URL'den oku
   const urlCategory = searchParams.get("category") || "";
-  const urlCity = searchParams.get("city") ? Number(searchParams.get("city")) : null;
   const urlBrand = searchParams.get("brand") ? Number(searchParams.get("brand")) : null;
   const urlModel = searchParams.get("model") ? Number(searchParams.get("model")) : null;
+  const urlNew = searchParams.get("new") === "true";
+
   const [selectedCategory, setSelectedCategory] = useState(urlCategory);
-  const [cities, setCities] = useState<City[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [models, setModels] = useState<Model[]>([]);
-  const [selectedCity, setSelectedCity] = useState<number | null>(urlCity);
   const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
   const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
   const [showFilters, setShowFilters] = useState(false);
@@ -113,7 +106,7 @@ export default function FeedPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [fetching, setFetching] = useState(false); // İlk yükleme için
+  const [fetching, setFetching] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const initialLoadDone = useRef(false);
 
@@ -129,61 +122,67 @@ export default function FeedPage() {
       }
     });
 
-    router.replace(`/feed?${params.toString()}`, { scroll: false });
+    router.replace(`/home?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
   // URL değiştiğinde state'leri güncelle
   useEffect(() => {
     setSelectedCategory(urlCategory);
-    setSelectedCity(urlCity);
     setSelectedBrand(urlBrand);
     setSelectedModel(urlModel);
-  }, [urlCategory, urlCity, urlBrand, urlModel]);
+  }, [urlCategory, urlBrand, urlModel]);
 
   // URL'den ?new=true gelirse dialog aç
   useEffect(() => {
-    const urlNew = searchParams.get("new") === "true";
     if (urlNew) {
       setShowCreateDialog(true);
-      // URL'den new parametresini kaldır
       const params = new URLSearchParams(searchParams.toString());
       params.delete("new");
-      router.replace(`/feed?${params.toString()}`, { scroll: false });
+      router.replace(`/home?${params.toString()}`, { scroll: false });
     }
-  }, [router, searchParams]);
+  }, [urlNew, router, searchParams]);
 
-  // Sayfa yüklendiğinde - profile ve postları paralel yükle
+  // Sayfa yüklendiğinde - profile ve postları yükle
   useEffect(() => {
-    fetchProfile();
-    // Postları da hemen yükle (profile beklemeyi bekleme)
-    fetchPosts(1, true);
-    initialLoadDone.current = true;
+    async function initialLoad() {
+      await fetchProfile();
+      // Profile yüklendikten sonra postları yükle
+      if (profile) {
+        fetchPosts(1, true);
+      }
+      initialLoadDone.current = true;
+    }
+    initialLoad();
   }, []);
+
+  // Profile yüklendiğinde postları yükle
+  useEffect(() => {
+    if (profile && !initialLoadDone.current) {
+      fetchPosts(1, true);
+      initialLoadDone.current = true;
+    }
+  }, [profile]);
 
   // Filtre değiştiğinde gönderileri yeniden al
   useEffect(() => {
-    // İlk yüklemede çalışmasın (yukarıdaki useEffect zaten yüklüyor)
-    if (!initialLoadDone.current) return;
+    if (!initialLoadDone.current || !profile) return;
 
-    // URL'i güncelle (scope her zaman "all")
     updateURL({
       category: selectedCategory || null,
-      city: selectedCity?.toString() || null,
       brand: selectedBrand?.toString() || null,
       model: selectedModel?.toString() || null,
     });
 
-    // Gönderileri yeniden al
     setPosts([]);
     setPage(1);
     setHasMore(true);
     fetchPosts(1, true);
-  }, [selectedCategory, selectedCity, selectedBrand, selectedModel]);
+  }, [selectedCategory, selectedBrand, selectedModel, profile]);
 
   // Infinite scroll observer
   const lastPostRef = useCallback(
     (node: HTMLElement | null) => {
-      if (loadingMore) return;
+      if (!profile || loadingMore) return;
 
       if (observerRef.current) {
         observerRef.current.disconnect();
@@ -199,15 +198,15 @@ export default function FeedPage() {
         observerRef.current.observe(node);
       }
     },
-    [loadingMore, hasMore]
+    [loadingMore, hasMore, profile]
   );
 
   // Sayfa değiştiğinde daha fazla yükle
   useEffect(() => {
-    if (page > 1) {
+    if (page > 1 && profile) {
       fetchPosts(page, false);
     }
-  }, [page]);
+  }, [page, profile]);
 
   async function fetchUnreadNotificationCount() {
     try {
@@ -225,31 +224,28 @@ export default function FeedPage() {
 
   async function fetchProfile() {
     try {
-      // Profile fetch'i optional - auth olmayabilir
       const profileRes = await fetch("/api/users/profile", {
         credentials: "include",
       });
 
       if (profileRes.ok) {
-      const profileData = await profileRes.json();
+        const profileData = await profileRes.json();
 
         if (profileData.profile?.city) {
-      setProfile(profileData.profile);
-      
-          // Bildirim sayısını al (sadece auth varsa)
-      fetchUnreadNotificationCount();
+          setProfile(profileData.profile);
+          fetchUnreadNotificationCount();
+        } else {
+          // City yoksa onboarding'e yönlendir
+          router.push("/onboarding");
+          return;
         }
-      }
-      // Auth yoksa da devam et
-
-      // İlleri al (her zaman)
-      const citiesRes = await fetch("/api/locations/cities");
-      if (citiesRes.ok) {
-        const citiesData = await citiesRes.json();
-        setCities(citiesData.cities);
+      } else {
+        // Auth yoksa sign-in'e yönlendir
+        router.push("/sign-in");
+        return;
       }
 
-      // Markaları al (her zaman)
+      // Markaları al
       const brandsRes = await fetch("/api/locations/brands");
       if (brandsRes.ok) {
         const brandsData = await brandsRes.json();
@@ -273,6 +269,8 @@ export default function FeedPage() {
   }
 
   async function fetchPosts(pageNum: number = 1, reset: boolean = false) {
+    if (!profile) return;
+
     if (reset) {
       setFetching(true);
       setLoadingMore(false);
@@ -282,17 +280,12 @@ export default function FeedPage() {
 
     try {
       const params = new URLSearchParams();
-      // Feed sayfası her zaman "all" scope
-      params.set("scope", "all");
+      params.set("scope", "my"); // Her zaman "my"
       params.set("page", pageNum.toString());
       params.set("limit", "20");
 
       if (selectedCategory) {
         params.set("category", selectedCategory);
-      }
-
-      if (selectedCity) {
-        params.set("cityId", selectedCity.toString());
       }
 
       if (selectedModel) {
@@ -309,13 +302,11 @@ export default function FeedPage() {
         const postsData = await postsRes.json();
         
         if (reset) {
-          // Duplicate'leri önlemek için unique ID'lere göre filtrele
           const uniquePosts = postsData.posts.filter((post: Post, index: number, self: Post[]) => 
             index === self.findIndex((p: Post) => p.id === post.id)
           );
           setPosts(uniquePosts);
         } else {
-          // Yeni post'ları eklerken duplicate'leri önle
           setPosts((prev) => {
             const existingIds = new Set(prev.map(p => p.id));
             const newPosts = postsData.posts.filter((post: Post) => !existingIds.has(post.id));
@@ -323,7 +314,6 @@ export default function FeedPage() {
           });
         }
 
-        // Daha fazla var mı kontrol et
         setHasMore(postsData.pagination.page < postsData.pagination.totalPages);
       }
     } catch {
@@ -333,7 +323,6 @@ export default function FeedPage() {
       setLoadingMore(false);
     }
   }
-
 
   // SSE ile anlık bildirim al
   useEffect(() => {
@@ -350,7 +339,6 @@ export default function FeedPage() {
         } else if (data.type === 'new_notification') {
           setUnreadNotificationCount(data.unread_count);
           
-          // Tarayıcı bildirimi göster (izin varsa)
           if (typeof window !== "undefined" && "Notification" in window) {
             if (Notification.permission === "granted") {
               try {
@@ -374,7 +362,6 @@ export default function FeedPage() {
 
     eventSource.onerror = () => {
       // EventSource otomatik olarak yeniden bağlanmaya çalışır
-      // Bağlantı kapalıysa, useEffect dependency değiştiğinde yeniden bağlanır
     };
 
     return () => {
@@ -382,7 +369,7 @@ export default function FeedPage() {
     };
   }, [profile]);
 
-  // Sayfa görünür olduğunda bildirim sayısını güncelle (fallback)
+  // Sayfa görünür olduğunda bildirim sayısını güncelle
   useEffect(() => {
     if (!profile) return;
 
@@ -425,7 +412,6 @@ export default function FeedPage() {
 
     fetchModels();
     
-    // Sadece kullanıcı marka değiştirdiyse sıfırla (ilk yükleme değilse)
     if (prevBrandRef.current !== null && prevBrandRef.current !== selectedBrand) {
       setSelectedModel(null);
     }
@@ -468,19 +454,15 @@ export default function FeedPage() {
     const vehicle = post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : "";
     const title = `${category?.emoji || ""} ${category?.label || "Gönderi"}${vehicle} | Garaj Muhabbet`;
 
-    // Web Share API destekleniyorsa
     if (navigator.share) {
       try {
         await navigator.share({ title, text, url });
       } catch (err) {
-        // Kullanıcı paylaşımı iptal ettiyse sessizce geç
         if ((err as Error).name !== "AbortError") {
-          // Fallback: Kopyala
           await copyToClipboard(url);
         }
       }
     } else {
-      // Fallback: Kopyala
       await copyToClipboard(url);
     }
   }
@@ -491,20 +473,6 @@ export default function FeedPage() {
       toast.success("Link kopyalandı!");
     } catch {
       toast.error("Link kopyalanamadı");
-    }
-  }
-
-  async function handleLogout() {
-    if (!confirm("Çıkış yapmak istediğinize emin misiniz?")) return;
-    
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      window.location.href = "/sign-in";
-    } catch {
-      toast.error("Çıkış yapılamadı");
     }
   }
 
@@ -535,20 +503,23 @@ export default function FeedPage() {
     );
   }
 
-  const activeFilterCount = [selectedCategory, selectedCity, selectedBrand, selectedModel].filter(Boolean).length;
+  if (!profile) {
+    return null; // Router yönlendirecek
+  }
+
+  const activeFilterCount = [selectedCategory, selectedBrand, selectedModel].filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - Minimal */}
+      {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex items-center justify-between h-12">
             <span className="text-sm font-medium">
-              Keşfet
+              {profile.city?.name || "Anasayfa"}
             </span>
             <div className="flex items-center gap-2">
-              {/* Bildirimler - Sadece auth olanlar için */}
-              {profile && (
+              {/* Bildirimler */}
               <Link
                 href="/notifications"
                 className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
@@ -562,17 +533,6 @@ export default function FeedPage() {
                   </span>
                 )}
               </Link>
-              )}
-              
-              {/* Giriş Yap - Auth yoksa */}
-              {!profile && (
-                <Link
-                  href="/sign-in"
-                  className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-                >
-                  Giriş Yap
-                </Link>
-              )}
               
               {/* Filtreler */}
               <button
@@ -629,23 +589,6 @@ export default function FeedPage() {
                 </div>
               </div>
 
-              {/* Konum */}
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-muted-foreground">Konum</label>
-                
-                {/* İl */}
-                <select
-                  value={selectedCity || ""}
-                  onChange={(e) => setSelectedCity(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">Tüm İller</option>
-                  {cities.map((city) => (
-                    <option key={city.id} value={city.id}>{city.name}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* Marka ve Model */}
               <div className="space-y-3">
                 <label className="text-xs font-medium text-muted-foreground">Araç</label>
@@ -685,7 +628,6 @@ export default function FeedPage() {
                     <button
                       onClick={() => {
                         setSelectedCategory("");
-                        setSelectedCity(null);
                         setSelectedBrand(null);
                         setSelectedModel(null);
                       }}
@@ -731,12 +673,11 @@ export default function FeedPage() {
               };
 
               const isLast = index === posts.length - 1;
-              const shouldObserve = isLast;
 
               return (
                 <article
                   key={post.id}
-                  ref={shouldObserve ? lastPostRef : null}
+                  ref={isLast ? lastPostRef : null}
                   className="hover:bg-muted/30"
                 >
                   <Link href={`/post/${post.id}`} className="block px-4 py-4">
@@ -756,12 +697,6 @@ export default function FeedPage() {
                           <span className="text-muted-foreground text-sm">·</span>
                           <span className="text-muted-foreground text-sm">{formatDate(post.created_at)}</span>
                         </div>
-                        
-                        {post.location && (
-                          <p className="text-xs text-muted-foreground mb-2">
-                            📍 {post.location.city}
-                          </p>
-                        )}
                         
                         {post.vehicle && (
                           <p className="text-xs text-muted-foreground mb-2">
@@ -815,7 +750,7 @@ export default function FeedPage() {
                             </button>
                             
                             {/* Sil (sadece kendi gönderileri) */}
-                            {post.user.id === profile?.id && (
+                            {post.user.id === profile.id && (
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
@@ -859,8 +794,7 @@ export default function FeedPage() {
         )}
       </main>
 
-      {/* Create Post Dialog - Sadece auth varsa */}
-      {profile && (
+      {/* Create Post Dialog */}
       <CreatePostDialog
         open={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
@@ -872,7 +806,6 @@ export default function FeedPage() {
           fetchPosts(1, true);
         }}
       />
-      )}
     </div>
   );
 }

@@ -20,6 +20,11 @@ export default function MainLayout({
           return; // Feed sayfasında onboarding kontrolü yapma
         }
 
+        // Home sayfası auth gerektirir
+        if (pathname === "/home") {
+          // Home sayfası için auth kontrolü yapılacak (devam edecek)
+        }
+
         // Auth kontrolü
         const authRes = await fetch("/api/auth/me", {
           credentials: "include",
