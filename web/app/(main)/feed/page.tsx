@@ -67,20 +67,22 @@ interface Model {
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  satilik: { label: "Satılık", emoji: "💰", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
-  kiralik: { label: "Kiralık", emoji: "🔑", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" },
+  soru: { label: "Soru", emoji: "❓", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" },
   yedek_parca: { label: "Yedek Parça", emoji: "🔧", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" },
-  aksesuar: { label: "Aksesuar", emoji: "🎨", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300" },
   servis: { label: "Servis", emoji: "🛠️", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" },
+  bakim: { label: "Bakım", emoji: "⚙️", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
+  deneyim: { label: "Deneyim", emoji: "💬", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300" },
+  yardim: { label: "Yardım", emoji: "🤝", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" },
 };
 
 const CATEGORIES = [
   { value: "", label: "Tümü", emoji: "📋" },
-  { value: "satilik", label: "Satılık", emoji: "💰" },
-  { value: "kiralik", label: "Kiralık", emoji: "🔑" },
+  { value: "soru", label: "Soru", emoji: "❓" },
   { value: "yedek_parca", label: "Yedek Parça", emoji: "🔧" },
-  { value: "aksesuar", label: "Aksesuar", emoji: "🎨" },
   { value: "servis", label: "Servis", emoji: "🛠️" },
+  { value: "bakim", label: "Bakım", emoji: "⚙️" },
+  { value: "deneyim", label: "Deneyim", emoji: "💬" },
+  { value: "yardim", label: "Yardım", emoji: "🤝" },
 ];
 
 export default function FeedPage() {

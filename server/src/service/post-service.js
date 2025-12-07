@@ -1,7 +1,7 @@
 import pool from '../config/database.js';
 import HttpException from '../exceptions/http-exception.js';
 
-const VALID_CATEGORIES = ['satilik', 'kiralik', 'yedek_parca', 'aksesuar', 'servis'];
+const VALID_CATEGORIES = ['soru', 'yedek_parca', 'servis', 'bakim', 'deneyim', 'yardim'];
 
 export default class PostService {
   /**

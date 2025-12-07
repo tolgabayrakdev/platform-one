@@ -17,11 +17,12 @@ interface CreatePostDialogProps {
 }
 
 const CATEGORIES = [
-  { value: "satilik", label: "Satılık", emoji: "💰" },
-  { value: "kiralik", label: "Kiralık", emoji: "🔑" },
+  { value: "soru", label: "Soru", emoji: "❓" },
   { value: "yedek_parca", label: "Yedek Parça", emoji: "🔧" },
-  { value: "aksesuar", label: "Aksesuar", emoji: "🎨" },
   { value: "servis", label: "Servis", emoji: "🛠️" },
+  { value: "bakim", label: "Bakım", emoji: "⚙️" },
+  { value: "deneyim", label: "Deneyim", emoji: "💬" },
+  { value: "yardim", label: "Yardım", emoji: "🤝" },
 ];
 
 interface Brand {
@@ -380,7 +381,7 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                     setContent(value);
                   }
                 }}
-                placeholder="Araç hakkında detayları yazın..."
+                placeholder="Sorunuzu, deneyiminizi veya paylaşmak istediğiniz bilgiyi yazın..."
               rows={4}
                 className={`w-full px-3 py-2 text-sm border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 resize-none transition-colors ${
                   content.length >= 500 

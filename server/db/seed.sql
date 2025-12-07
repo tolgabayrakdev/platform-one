@@ -19,39 +19,87 @@ DECLARE
     j INTEGER;
     random_category VARCHAR;
     random_content TEXT;
-    categories VARCHAR[] := ARRAY['satilik', 'kiralik', 'yedek_parca', 'aksesuar', 'servis'];
+    categories VARCHAR[] := ARRAY['soru', 'yedek_parca', 'servis', 'bakim', 'deneyim', 'yardim'];
     first_names VARCHAR[] := ARRAY['Ahmet', 'Mehmet', 'Ali', 'Ayşe', 'Fatma', 'Zeynep', 'Mustafa', 'Hasan', 'Elif', 'Emre'];
     last_names VARCHAR[] := ARRAY['Yılmaz', 'Kaya', 'Demir', 'Çelik', 'Şahin', 'Yıldız', 'Öztürk', 'Aydın', 'Özdemir', 'Arslan'];
     
-    -- Dinamik içerik şablonları (marka ve model isimleri ile doldurulacak)
-    satilik_template TEXT := '%s model %s satılık. %s km, bakımlı, hasarsız. Fiyat görüşülebilir. İletişim için mesaj atın. 🚗';
-    kiralik_template TEXT := '%s kiralık. Günlük/haftalık/aylık kiralama seçenekleri mevcut. Detaylar için mesaj atın. 🚗';
-    yedek_parca_template TEXT := '%s %s için yedek parça. Orijinal, çalışır durumda. Fiyat görüşülebilir. 🔧';
+    -- Topluluk/forum odaklı içerik şablonları
+    soru_icerikler TEXT[] := ARRAY[
+        '%s %s modelinde yağ değişimi ne kadar sürede yapılmalı? İlk kez araç sahibi oldum, bilgisi olan var mı? ❓',
+        '%s %s için hangi lastik markası önerirsiniz? Kış lastiği alacağım, tavsiyeleriniz neler?',
+        '%s %s motorunda garip bir ses var, ne olabilir? Motor çalışırken tık tık ses geliyor.',
+        '%s %s için servis önerisi var mı? İstanbul''da güvenilir bir servis arıyorum.',
+        '%s %s kliması yeterince soğutmuyor, ne yapabilirim? Gaz doldurma gerekir mi?',
+        '%s %s frenlerinde gıcırtı var, normal mi? Fren balata değişimi gerekir mi?',
+        '%s %s için akü önerisi? Kaç amper olmalı? Hangi marka daha iyi?',
+        '%s %s radyatör suyu sürekli azalıyor, neden olabilir? Kontrol ettirdim ama bir şey bulamadılar.',
+        '%s %s için cam filmi önerisi var mı? Hangi marka ve renk tonu daha iyi?',
+        '%s %s motor yağı hangi marka kullanıyorsunuz? Sentetik mi mineral mi tercih ediyorsunuz?'
+    ];
     
-    aksesuar_icerikler TEXT[] := ARRAY[
-        'Araç için güneşlik seti. 4 cam için, kaliteli malzeme. Fiyat: 150 TL. 🎨',
-        'Araç için paspas seti. Kauçuk, su geçirmez. Fiyat: 200 TL.',
-        'Araç için koltuk kılıfı seti. Kumaş, yıkanabilir. Fiyat: 300 TL.',
-        'Araç için telefon tutacağı. Manyetik, güçlü. Fiyat: 50 TL.',
-        'Araç için USB şarj adaptörü. Çift portlu, hızlı şarj. Fiyat: 80 TL.',
-        'Araç için güneşlik perdesi. Ön cam için, katlanabilir. Fiyat: 100 TL.',
-        'Araç için koku spreyleri seti. 3 adet, farklı kokular. Fiyat: 60 TL.',
-        'Araç için temizlik seti. Mikrofiber bezler dahil. Fiyat: 120 TL.',
-        'Araç için bagaj organizatörü. Katlanabilir, pratik. Fiyat: 180 TL.',
-        'Araç için güneşlik cam filmi. Profesyonel uygulama. Fiyat görüşülebilir.'
+    yedek_parca_icerikler TEXT[] := ARRAY[
+        '%s %s için orijinal far fiyatları ne kadar? Birisi çarptı, değiştirmem gerekiyor.',
+        '%s %s için egzoz borusu nereden bulabilirim? Orijinal veya yedek parça önerisi var mı?',
+        '%s %s için kaporta parçası lazım. Sağ ön kapı, nereden temin edebilirim?',
+        '%s %s için motor parçası arıyorum. Alternatör arızalı, nereden alabilirim?',
+        '%s %s için fren balata önerisi? Hangi marka daha uzun ömürlü?',
+        '%s %s için klima kompresörü arızalı. Tamir mi yoksa değişim mi daha mantıklı?',
+        '%s %s için amortisör önerisi var mı? Hangi marka daha konforlu?',
+        '%s %s için cam silecek motoru arızalı. Nereden bulabilirim? Fiyatı ne kadar?',
+        '%s %s için radyatör fanı çalışmıyor. Değişim mi yoksa tamir mi?',
+        '%s %s için yakıt pompası arızalı. Orijinal parça nereden bulabilirim?'
     ];
     
     servis_icerikler TEXT[] := ARRAY[
-        'Araç bakım ve onarım hizmeti. Deneyimli ustalar, uygun fiyat. İletişim için mesaj atın. 🛠️',
-        'Periyodik bakım hizmeti. Yağ değişimi, filtre değişimi. Fiyat görüşülebilir.',
-        'Motor tamiri hizmeti. Tüm markalar için hizmet. Deneyimli ekip.',
-        'Fren sistemi bakımı. Fren balata, disk değişimi. Uygun fiyat garantisi.',
-        'Klima bakımı ve tamiri. Gaz doldurma, filtre değişimi. Hızlı servis.',
-        'Elektrik arıza tamiri. Alternatör, marş motoru, akü. Deneyimli elektrikçi.',
-        'Kaporta ve boya hizmeti. Hasar onarımı, boyama. Profesyonel işçilik.',
-        'Lastik değişimi ve balans ayarı. Tüm lastik markaları. Hızlı servis.',
-        'Cam tamiri ve değişimi. Ön cam, yan camlar. Sigorta anlaşmalı.',
-        'Egzoz tamiri. Muffler, katalizör değişimi. Uygun fiyat garantisi.'
+        '%s %s için güvenilir servis önerisi var mı? İstanbul''da periyodik bakım yaptıracağım.',
+        '%s %s motor arızası var, hangi servise götüreyim? Deneyimli bir servis arıyorum.',
+        '%s %s için klima bakımı yaptıran var mı? Nerede yaptırdınız, memnun kaldınız mı?',
+        '%s %s kaporta boyası yaptıracağım. İyi bir boyacı önerisi var mı?',
+        '%s %s için fren bakımı yaptıran var mı? Hangi servis daha uygun fiyatlı?',
+        '%s %s motor yağı değişimi nerede yaptırıyorsunuz? Güvenilir bir yer önerisi?',
+        '%s %s için lastik değişimi ve balans ayarı yaptıran var mı? Nerede yaptırdınız?',
+        '%s %s elektrik arızası var. İyi bir elektrikçi önerisi var mı?',
+        '%s %s için cam tamiri yaptıran var mı? Ön camda çatlak var, tamir edilebilir mi?',
+        '%s %s egzoz tamiri yaptıran var mı? Hangi servis daha uygun?'
+    ];
+    
+    bakim_icerikler TEXT[] := ARRAY[
+        '%s %s periyodik bakım programı nasıl? Kaç km''de ne yapılmalı?',
+        '%s %s için motor yağı değişimi ne sıklıkla yapılmalı? Sentetik yağ kullanıyorum.',
+        '%s %s filtre değişimleri ne zaman yapılmalı? Hava filtresi, yakıt filtresi, yağ filtresi?',
+        '%s %s klima bakımı nasıl yapılır? Kendim yapabilir miyim yoksa servise mi götürmeliyim?',
+        '%s %s fren bakımı ne zaman yapılmalı? Fren balata ömrü ne kadar?',
+        '%s %s akü bakımı nasıl yapılır? Su seviyesi kontrolü gerekir mi?',
+        '%s %s lastik bakımı ve rotasyon ne zaman yapılmalı?',
+        '%s %s motor soğutma sistemi bakımı nasıl yapılır? Radyatör suyu ne zaman değişmeli?',
+        '%s %s için kış bakımı neler yapılmalı? Kışa hazırlık için önerileriniz?',
+        '%s %s yaz bakımı neler yapılmalı? Klima bakımı, lastik kontrolü vs?'
+    ];
+    
+    deneyim_icerikler TEXT[] := ARRAY[
+        '%s %s ile 2 yıllık deneyimim. Genel olarak memnunum ama şu konularda dikkat edilmeli...',
+        '%s %s satın aldım, ilk izlenimlerim. Motor performansı ve yakıt tüketimi hakkında...',
+        '%s %s ile uzun yol deneyimi. Konfor ve yakıt tüketimi nasıl?',
+        '%s %s bakım masrafları. 1 yılda ne kadar harcadım, sizlerle paylaşmak istedim.',
+        '%s %s ile şehir içi kullanım deneyimi. Trafikte nasıl, manevra kabiliyeti nasıl?',
+        '%s %s satın alma sürecim. Hangi özelliklere dikkat ettim, tavsiyelerim...',
+        '%s %s ile kış kullanımı. Karlı yolda nasıl, kış lastiği gerekli mi?',
+        '%s %s modifikasyon deneyimlerim. Ne yaptırdım, memnun kaldım mı?',
+        '%s %s servis deneyimlerim. Hangi servise gittim, memnun kaldım mı?',
+        '%s %s ile ilgili genel görüşlerim. Artıları ve eksileri neler?'
+    ];
+    
+    yardim_icerikler TEXT[] := ARRAY[
+        '%s %s yolda kaldı, yardım lazım! Motor çalışmıyor, ne yapabilirim?',
+        '%s %s için acil yedek parça lazım. Alternatör arızalı, nereden bulabilirim?',
+        '%s %s için servis önerisi lazım. Motor arızası var, güvenilir bir yer arıyorum.',
+        '%s %s lastik patladı, yedek lastik yok. Ne yapmalıyım? Çekici mi çağırayım?',
+        '%s %s akü bitti, yol kenarında kaldım. Akü takviyesi yapabilir misiniz?',
+        '%s %s yakıt bitti, yolda kaldım. En yakın benzin istasyonu nerede?',
+        '%s %s için acil tamirci lazım. Frenler çalışmıyor, güvenli bir şekilde durduramıyorum.',
+        '%s %s cam kırıldı, acil cam tamiri lazım. Nereden yaptırabilirim?',
+        '%s %s için çekici lazım. Motor arızası var, servise çekmem gerekiyor.',
+        '%s %s için acil yardım! Araç çalışmıyor, ne yapabilirim?'
     ];
     
     user_ids UUID[];
@@ -60,9 +108,6 @@ DECLARE
     model_ids INTEGER[];
     brand_name TEXT;
     model_name TEXT;
-    year_val INTEGER;
-    km_val INTEGER;
-    price_val INTEGER;
 BEGIN
     -- Tüm illeri al
     SELECT ARRAY_AGG(id) INTO city_ids FROM cities;
@@ -80,7 +125,7 @@ BEGIN
             VALUES (
                 first_names[floor(random() * 10 + 1)],
                 last_names[floor(random() * 10 + 1)],
-                'test_' || c_id || '_' || extract(epoch from now())::bigint || '_' || floor(random() * 10000)::int || '_' || i || '@arac.app',
+                'test_' || c_id || '_' || extract(epoch from now())::bigint || '_' || floor(random() * 10000)::int || '_' || i || '@garajmuhabbet.app',
                 '+9053' || (10000000 + floor(random() * 89999999))::TEXT,
                 '$2b$10$xPPMfPZfMqNqR0ZJGtOeAuYxLxMqMqMqMqMqMqMqMqMqMqMqMqMqM',
                 true, true, true, c_id
@@ -109,37 +154,34 @@ BEGIN
                 SELECT name INTO model_name FROM models WHERE id = m_id;
                 
                 FOR j IN 1..10 LOOP
-            random_category := categories[floor(random() * 5 + 1)];
-            
-                    -- Rastgele yıl, km ve fiyat oluştur
-                    year_val := 2015 + floor(random() * 10); -- 2015-2024 arası
-                    km_val := 20000 + floor(random() * 100000); -- 20.000-120.000 km arası
-                    price_val := 150000 + floor(random() * 400000); -- 150.000-550.000 TL arası
+                    random_category := categories[floor(random() * 6 + 1)];
                     
                     -- Kategoriye göre içerik oluştur
-            CASE random_category
-                        WHEN 'satilik' THEN 
-                            random_content := format(satilik_template, year_val::TEXT, brand_name || ' ' || model_name, km_val::TEXT);
-                        WHEN 'kiralik' THEN 
-                            random_content := format(kiralik_template, brand_name || ' ' || model_name);
+                    CASE random_category
+                        WHEN 'soru' THEN 
+                            random_content := format(soru_icerikler[floor(random() * 10 + 1)], brand_name, model_name);
                         WHEN 'yedek_parca' THEN 
-                            random_content := format(yedek_parca_template, brand_name, model_name);
-                        WHEN 'aksesuar' THEN 
-                            random_content := aksesuar_icerikler[floor(random() * 10 + 1)];
+                            random_content := format(yedek_parca_icerikler[floor(random() * 10 + 1)], brand_name, model_name);
                         WHEN 'servis' THEN 
-                            random_content := servis_icerikler[floor(random() * 10 + 1)];
-            END CASE;
-            
+                            random_content := format(servis_icerikler[floor(random() * 10 + 1)], brand_name, model_name);
+                        WHEN 'bakim' THEN 
+                            random_content := format(bakim_icerikler[floor(random() * 10 + 1)], brand_name, model_name);
+                        WHEN 'deneyim' THEN 
+                            random_content := format(deneyim_icerikler[floor(random() * 10 + 1)], brand_name, model_name);
+                        WHEN 'yardim' THEN 
+                            random_content := format(yardim_icerikler[floor(random() * 10 + 1)], brand_name, model_name);
+                    END CASE;
+                    
                     INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content, created_at)
-            VALUES (
-                user_ids[floor(random() * 5 + 1)],
+                    VALUES (
+                        user_ids[floor(random() * 5 + 1)],
                         c_id,
                         b_id,
                         m_id,
-                random_category,
-                random_content,
-                NOW() - (floor(random() * 30) || ' days')::INTERVAL - (floor(random() * 24) || ' hours')::INTERVAL
-            );
+                        random_category,
+                        random_content,
+                        NOW() - (floor(random() * 30) || ' days')::INTERVAL - (floor(random() * 24) || ' hours')::INTERVAL
+                    );
                 END LOOP;
             END LOOP;
         END LOOP;
@@ -147,6 +189,6 @@ BEGIN
 END $$;
 
 -- Sonuç
-SELECT 'Kullanıcı: ' || COUNT(*) FROM users WHERE email LIKE 'test%@arac.app'
+SELECT 'Kullanıcı: ' || COUNT(*) FROM users WHERE email LIKE 'test%@garajmuhabbet.app'
 UNION ALL
 SELECT 'Gönderi: ' || COUNT(*) FROM posts;

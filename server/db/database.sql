@@ -56,17 +56,17 @@ CREATE TABLE models (
 );
 
 -- =============================================
--- İLAN TABLOLARI (ARAÇ PLATFORMU)
+-- GÖNDERİ TABLOLARI (GARAJ MUHABBET)
 -- =============================================
 
--- Kategoriler: satilik, kiralik, yedek_parca, aksesuar, servis
+-- Kategoriler: soru, yedek_parca, servis, bakim, deneyim, yardim
 CREATE TABLE posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     city_id INTEGER NOT NULL REFERENCES cities(id),
     brand_id INTEGER NOT NULL REFERENCES brands(id),
     model_id INTEGER NOT NULL REFERENCES models(id),
-    category VARCHAR(20) NOT NULL CHECK (category IN ('satilik', 'kiralik', 'yedek_parca', 'aksesuar', 'servis')),
+    category VARCHAR(20) NOT NULL CHECK (category IN ('soru', 'yedek_parca', 'servis', 'bakim', 'deneyim', 'yardim')),
     content TEXT NOT NULL,
     images JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP DEFAULT NOW()
@@ -116,70 +116,3 @@ CREATE TABLE notifications (
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_notifications_read ON notifications(user_id, is_read);
 CREATE INDEX idx_notifications_created_at ON notifications(created_at DESC);
-
--- =============================================
--- ÖRNEK VERİLER (MVP için)
--- =============================================
-
--- İller
-INSERT INTO cities (name) VALUES 
-    ('İstanbul'),
-    ('Ankara'),
-    ('İzmir');
-
--- =============================================
--- ARAÇ MARKA VE MODEL VERİLERİ
--- =============================================
-
--- Araç Markaları
-INSERT INTO brands (name) VALUES 
-    ('Fiat'),
-    ('Renault'),
-    ('Volkswagen'),
-    ('Ford'),
-    ('Opel'),
-    ('Peugeot'),
-    ('Toyota'),
-    ('Hyundai'),
-    ('Mercedes-Benz'),
-    ('BMW');
-
--- Araç Modelleri - Fiat
-INSERT INTO models (brand_id, name) VALUES 
-    (1, 'Punto'),
-    (1, 'Egea'),
-    (1, 'Doblo'),
-    (1, 'Fiorino'),
-    (1, 'Tipo');
-
--- Araç Modelleri - Renault
-INSERT INTO models (brand_id, name) VALUES 
-    (2, 'Clio'),
-    (2, 'Megane'),
-    (2, 'Fluence'),
-    (2, 'Symbol'),
-    (2, 'Kangoo');
-
--- Araç Modelleri - Volkswagen
-INSERT INTO models (brand_id, name) VALUES 
-    (3, 'Golf'),
-    (3, 'Polo'),
-    (3, 'Passat'),
-    (3, 'Jetta'),
-    (3, 'Tiguan');
-
--- Araç Modelleri - Ford
-INSERT INTO models (brand_id, name) VALUES 
-    (4, 'Focus'),
-    (4, 'Fiesta'),
-    (4, 'Mondeo'),
-    (4, 'Kuga'),
-    (4, 'Transit');
-
--- Araç Modelleri - Opel
-INSERT INTO models (brand_id, name) VALUES 
-    (5, 'Corsa'),
-    (5, 'Astra'),
-    (5, 'Insignia'),
-    (5, 'Crossland'),
-    (5, 'Combo');

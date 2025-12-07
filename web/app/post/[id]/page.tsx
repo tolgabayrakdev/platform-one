@@ -28,11 +28,12 @@ interface Post {
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  satilik: { label: "Satılık", emoji: "💰", color: "bg-green-100 text-green-800" },
-  kiralik: { label: "Kiralık", emoji: "🔑", color: "bg-blue-100 text-blue-800" },
+  soru: { label: "Soru", emoji: "❓", color: "bg-blue-100 text-blue-800" },
   yedek_parca: { label: "Yedek Parça", emoji: "🔧", color: "bg-purple-100 text-purple-800" },
-  aksesuar: { label: "Aksesuar", emoji: "🎨", color: "bg-pink-100 text-pink-800" },
   servis: { label: "Servis", emoji: "🛠️", color: "bg-orange-100 text-orange-800" },
+  bakim: { label: "Bakım", emoji: "⚙️", color: "bg-green-100 text-green-800" },
+  deneyim: { label: "Deneyim", emoji: "💬", color: "bg-pink-100 text-pink-800" },
+  yardim: { label: "Yardım", emoji: "🤝", color: "bg-yellow-100 text-yellow-800" },
 };
 
 const API_URL = process.env.BACKEND_URL || "http://localhost:1234";
