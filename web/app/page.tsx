@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import PostsList from "./posts-list";
+import LandingHero from "@/components/landing-hero";
+import LandingStats from "@/components/landing-stats";
+import LandingTrends from "@/components/landing-trends";
 
 export const metadata: Metadata = {
   title: "Garaj Muhabbet - Araç Sahipleri Topluluğu | Türkiye'nin 81 İlinden Araç Forumu",
@@ -52,28 +55,64 @@ async function getLatestPosts() {
   }
 }
 
+async function getPlatformStats() {
+  try {
+    const res = await fetch(`${API_URL}/api/posts/stats`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return { totalPosts: 0, totalUsers: 0, totalCities: 81, totalBrands: 0 };
+    }
+    return await res.json();
+  } catch {
+    return { totalPosts: 0, totalUsers: 0, totalCities: 81, totalBrands: 0 };
+  }
+}
+
+async function getTrends() {
+  try {
+    const res = await fetch(`${API_URL}/api/posts/trends?global=true`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return { brands: [], cities: [], categories: [] };
+    }
+    return await res.json();
+  } catch {
+    return { brands: [], cities: [], categories: [] };
+  }
+}
+
 export default async function Home() {
-  const posts = await getLatestPosts();
+  const [posts, stats, trends] = await Promise.all([
+    getLatestPosts(),
+    getPlatformStats(),
+    getTrends(),
+  ]);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold">Garaj Muhabbet</h1>
-            </div>
-            <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between h-14 md:h-16">
+            <Link href="/" className="flex items-center gap-2 md:gap-3">
+              <span className="text-xl md:text-2xl">🚗</span>
+              <h1 className="text-lg md:text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Garaj Muhabbet
+              </h1>
+            </Link>
+            <div className="flex items-center gap-2 md:gap-3">
               <Link
                 href="/sign-in"
-                className="px-5 py-2.5 text-sm font-medium rounded-lg border border-border hover:bg-muted"
+                className="px-3 py-1.5 md:px-5 md:py-2.5 text-xs md:text-sm font-medium rounded-lg border border-border hover:bg-muted transition-colors"
               >
-                Giriş Yap
+                <span className="hidden sm:inline">Giriş Yap</span>
+                <span className="sm:hidden">Giriş</span>
               </Link>
               <Link
                 href="/sign-up"
-                className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                className="px-3 py-1.5 md:px-5 md:py-2.5 text-xs md:text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105"
               >
                 Kayıt Ol
               </Link>
@@ -83,48 +122,38 @@ export default async function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        {/* Hero CTA */}
-        <div className="mb-10 p-8 rounded-xl bg-primary/5 border border-primary/20">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-3xl">🚗</span>
-            <h2 className="text-3xl font-bold">
-              Sende Aramıza Katıl!
-            </h2>
-          </div>
-          <p className="text-base text-foreground/90 mb-6 leading-relaxed">
-            Türkiye'nin <span className="font-semibold text-primary">81 ilinden</span> araç sahiplerinin bir araya geldiği topluluk platformu. 
-            Araçlarınız hakkında <span className="font-semibold text-primary">sorular sorun, deneyimlerinizi paylaşın, yardımlaşın</span>. 
-            Yedek parça, servis, bakım ve araç konularında bilgi alışverişi yapın.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/sign-up"
-              className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              Ücretsiz Kayıt Ol
-            </Link>
-            <Link
-              href="/feed"
-              className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium rounded-lg border border-primary/30 bg-background hover:bg-primary/10"
-            >
-              Tüm Gönderileri Gör
-            </Link>
-          </div>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8 lg:py-12">
+        {/* Hero Section */}
+        <LandingHero />
+
+        {/* Platform Stats */}
+        <LandingStats
+          totalPosts={stats.totalPosts}
+          totalUsers={stats.totalUsers}
+          totalCities={stats.totalCities}
+          totalBrands={stats.totalBrands}
+        />
+
+        {/* Trends Section */}
+        <LandingTrends
+          brands={trends.brands || []}
+          cities={trends.cities || []}
+          categories={trends.categories || []}
+        />
 
         {/* Posts Section */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-6 bg-primary rounded-full"></div>
-              <h2 className="text-2xl font-bold">En Son Gönderiler</h2>
+        <section className="max-w-3xl mx-auto space-y-3 mt-8 md:mt-12">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="w-1 h-5 md:h-6 bg-primary rounded-full"></div>
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold">En Son Gönderiler</h2>
             </div>
             <Link
               href="/feed"
-              className="text-sm font-medium text-primary hover:text-primary/80"
+              className="text-xs md:text-sm font-medium text-primary hover:text-primary/80"
             >
-              Tümünü Gör →
+              <span className="hidden sm:inline">Tümünü Gör →</span>
+              <span className="sm:hidden">Tümü →</span>
             </Link>
           </div>
 
@@ -132,13 +161,13 @@ export default async function Home() {
 
           {/* CTA - Daha fazla gönderi için */}
           {posts.length > 0 && (
-            <div className="mt-8 p-8 rounded-lg bg-primary/5 border border-primary/20 text-center">
-              <p className="text-base font-medium mb-5 text-foreground/90">
+            <div className="mt-6 md:mt-8 p-6 md:p-8 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 text-center">
+              <p className="text-sm md:text-base font-medium mb-4 md:mb-5 text-foreground/90 px-2">
                 Daha fazla gönderi görmek ve topluluğa katılmak için kayıt olun
               </p>
               <Link
                 href="/sign-up"
-                className="inline-flex items-center justify-center px-8 py-3 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                className="inline-flex items-center justify-center px-6 md:px-8 py-2.5 md:py-3 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105"
               >
                 Ücretsiz Kayıt Ol
               </Link>
@@ -148,10 +177,10 @@ export default async function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8 mt-16">
+      <footer className="border-t border-border py-6 md:py-8 mt-12 md:mt-16">
         <div className="max-w-3xl mx-auto px-4">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 md:gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 text-xs md:text-sm text-muted-foreground">
               <Link href="/about" className="hover:text-foreground transition-colors">
                 Hakkımızda
               </Link>

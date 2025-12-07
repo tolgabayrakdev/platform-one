@@ -168,7 +168,8 @@ export default function FeedPage() {
 
   async function fetchTrends() {
     try {
-      const res = await fetch("/api/posts/trends", {
+      // Feed sayfası global olduğu için global=true parametresi gönder
+      const res = await fetch("/api/posts/trends?global=true", {
         credentials: "include",
       });
       
@@ -203,10 +204,10 @@ export default function FeedPage() {
     fetchPosts(1, true);
   }, [selectedCategory, selectedCity, selectedBrand, selectedModel]);
 
-  // Infinite scroll observer
+  // Infinite scroll observer (sadece auth olanlar için)
   const lastPostRef = useCallback(
     (node: HTMLElement | null) => {
-      if (loadingMore) return;
+      if (!profile || loadingMore) return; // Auth olmayanlar için infinite scroll yok
 
       if (observerRef.current) {
         observerRef.current.disconnect();
@@ -222,15 +223,15 @@ export default function FeedPage() {
         observerRef.current.observe(node);
       }
     },
-    [loadingMore, hasMore]
+    [loadingMore, hasMore, profile]
   );
 
-  // Sayfa değiştiğinde daha fazla yükle
+  // Sayfa değiştiğinde daha fazla yükle (sadece auth olanlar için)
   useEffect(() => {
-    if (page > 1) {
+    if (page > 1 && profile) {
       fetchPosts(page, false);
     }
-  }, [page]);
+  }, [page, profile]);
 
   async function fetchUnreadNotificationCount() {
     try {
@@ -308,7 +309,9 @@ export default function FeedPage() {
       // Feed sayfası her zaman "all" scope
       params.set("scope", "all");
       params.set("page", pageNum.toString());
-      params.set("limit", "20");
+      // Auth olmayan kullanıcılar için ilk yüklemede 50, auth olanlar için 20
+      const limit = !profile && reset ? "50" : "20";
+      params.set("limit", limit);
 
       if (selectedCategory) {
         params.set("category", selectedCategory);
@@ -808,7 +811,7 @@ export default function FeedPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-semibold text-muted-foreground">🔥 TREND</span>
                   </div>
-                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' as any, overscrollBehaviorX: 'contain' }}>
                     {trendingBrands.map((brand) => (
                       <button
                         key={brand.id}
@@ -996,10 +999,25 @@ export default function FeedPage() {
             )}
 
             {/* End */}
-            {!hasMore && posts.length > 0 && (
+            {!hasMore && posts.length > 0 && profile && (
               <p className="text-center text-sm text-muted-foreground py-6">
                 Tüm gönderileri gördünüz
               </p>
+            )}
+            
+            {/* Auth olmayanlar için kayıt ol mesajı */}
+            {!profile && posts.length > 0 && (
+              <div className="mt-8 p-6 md:p-8 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 text-center">
+                <p className="text-base font-medium mb-4 text-foreground/90">
+                  Daha fazlası için şimdi kayıt ol
+                </p>
+                <Link
+                  href="/sign-up"
+                  className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105"
+                >
+                  Ücretsiz Kayıt Ol
+                </Link>
+              </div>
             )}
           </div>
         )}

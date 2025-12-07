@@ -722,7 +722,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-semibold text-muted-foreground">🔥 TREND</span>
                   </div>
-                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' as any, overscrollBehaviorX: 'contain' }}>
                     {trendingBrands.map((brand) => (
                       <button
                         key={brand.id}
