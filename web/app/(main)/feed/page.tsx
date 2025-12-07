@@ -345,8 +345,23 @@ export default function FeedPage() {
           setUnreadNotificationCount(data.count);
         } else if (data.type === 'new_notification') {
           setUnreadNotificationCount(data.unread_count);
-          // İsteğe bağlı: Bildirim toast'ı göster
-          // toast.info(data.notification.message);
+          
+          // Tarayıcı bildirimi göster (izin varsa)
+          if (typeof window !== "undefined" && "Notification" in window) {
+            if (Notification.permission === "granted") {
+              try {
+                new Notification("Yeni Bildirim", {
+                  body: data.notification?.message || "Yeni bir bildiriminiz var",
+                  icon: "/favicon.ico",
+                  badge: "/favicon.ico",
+                  tag: data.notification?.id || "notification",
+                  requireInteraction: false,
+                });
+              } catch (error) {
+                console.error("Notification error:", error);
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('SSE parse error:', error);

@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 dakika
-  max: 250, // IP başına 250 istek
+  max: 1500, // IP başına 250 istek
   message: { message: 'Çok fazla istek. Lütfen daha sonra tekrar deneyin.' },
   standardHeaders: true,
   legacyHeaders: false

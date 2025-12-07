@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
       {
         source: "/api/:path*",
         destination: "http://localhost:1234/api/:path*",
+        has: [
+          {
+            type: 'header',
+            key: 'accept',
+            value: '(?<!text/event-stream).*',
+          },
+        ],
       },
     ];
   },
