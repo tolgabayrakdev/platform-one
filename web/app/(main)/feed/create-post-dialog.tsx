@@ -412,7 +412,7 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                 disabled={saving || uploadingImages || !category || !selectedBrand || !selectedModel || content.trim().length < 10}
                 className="flex-1 h-10 rounded-lg text-sm"
               >
-              {saving || uploadingImages ? (uploadingImages ? "Resimler yükleniyor..." : "Paylaşılıyor...") : "Paylaş"}
+              {saving || uploadingImages ? "Paylaşılıyor..." : "Paylaş"}
             </Button>
           </div>
         </form>

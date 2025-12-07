@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import BackButton from "./back-button";
 import ShareButton from "./share-button";
 import CommentsSection from "./comments-section";
+import ImageGallery from "./image-gallery";
 
 interface Post {
   id: string;
@@ -177,18 +178,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
           {/* Resimler */}
           {post.images && post.images.length > 0 && (
-            <div className={`mb-4 grid gap-2 ${
-              post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
-            }`}>
-              {post.images.map((img, idx) => (
-                <img
-                  key={idx}
-                  src={img.url}
-                  alt={`Gönderi resmi ${idx + 1}`}
-                  className="w-full h-64 object-cover rounded-lg border border-border"
-                />
-              ))}
-            </div>
+            <ImageGallery images={post.images} />
           )}
 
           {/* Meta */}
