@@ -101,6 +101,9 @@ export default function HomePage() {
   const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
   const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Trendler
+  const [trendingBrands, setTrendingBrands] = useState<Array<{ id: number; name: string; post_count: number }>>([]);
 
   // Infinite scroll
   const [page, setPage] = useState(1);
@@ -146,22 +149,47 @@ export default function HomePage() {
   useEffect(() => {
     async function initialLoad() {
       await fetchProfile();
-      // Profile yüklendikten sonra postları yükle
+      // Profile yüklendikten sonra postları ve trendleri yükle
       if (profile) {
         fetchPosts(1, true);
+        fetchTrends();
       }
       initialLoadDone.current = true;
     }
     initialLoad();
   }, []);
 
-  // Profile yüklendiğinde postları yükle
+  // Profile yüklendiğinde postları ve trendleri yükle
   useEffect(() => {
     if (profile && !initialLoadDone.current) {
       fetchPosts(1, true);
+      fetchTrends();
       initialLoadDone.current = true;
     }
   }, [profile]);
+
+  async function fetchTrends() {
+    if (!profile) return;
+    
+    try {
+      const cityId = profile.city?.id;
+      const params = new URLSearchParams();
+      if (cityId) {
+        params.set("cityId", cityId.toString());
+      }
+      
+      const res = await fetch(`/api/posts/trends?${params.toString()}`, {
+        credentials: "include",
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setTrendingBrands(data.brands || []);
+      }
+    } catch {
+      // Hata yok say
+    }
+  }
 
   // Filtre değiştiğinde gönderileri yeniden al
   useEffect(() => {
@@ -513,7 +541,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-3xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-12">
             <span className="text-sm font-medium">
               {profile.city?.name || "Anasayfa"}
@@ -651,9 +679,69 @@ export default function HomePage() {
         </DrawerContent>
       </Drawer>
 
-      {/* Content */}
-      <main className="max-w-3xl mx-auto pb-24">
-        {/* Posts */}
+      {/* Content - LinkedIn tarzı 3 kolonlu layout */}
+      <main className="max-w-7xl mx-auto pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:px-4">
+          {/* Sol Sidebar - Trendler (Desktop'ta görünür) */}
+          <aside className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-16 space-y-4">
+              {!fetching && trendingBrands.length > 0 && (
+                <div className="bg-card border border-border rounded-lg p-4 h-fit">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <span>🔥</span>
+                    <span>Trendler</span>
+                  </h3>
+                  <div className="space-y-1.5">
+                    {trendingBrands.map((brand) => (
+                      <button
+                        key={brand.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelectedBrand(brand.id);
+                          setSelectedModel(null);
+                          setShowFilters(false);
+                        }}
+                        className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center justify-between"
+                      >
+                        <span>🚗 {brand.name}</span>
+                        <span className="text-muted-foreground">{brand.post_count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* Ana İçerik - Postlar */}
+          <div className="lg:col-span-6 w-full px-2 lg:px-0">
+            {/* Mobilde Trendler - Horizontal Scroll */}
+            <div className="lg:hidden mb-4 mt-4">
+              {trendingBrands.length > 0 && (
+                <div className="px-3 py-3 border border-border rounded-lg bg-card">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-muted-foreground">🔥 TREND</span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                    {trendingBrands.map((brand) => (
+                      <button
+                        key={brand.id}
+                        onClick={() => {
+                          setSelectedBrand(brand.id);
+                          setSelectedModel(null);
+                          setShowFilters(false);
+                        }}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 transition-colors"
+                      >
+                        🚗 {brand.name} ({brand.post_count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Posts */}
         {fetching ? (
           <div className="flex justify-center py-16">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -792,6 +880,15 @@ export default function HomePage() {
             )}
           </div>
         )}
+          </div>
+
+          {/* Sağ Sidebar - Boş (gelecekte başka içerik eklenebilir) */}
+          <aside className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-16">
+              {/* Boş sidebar - gelecekte başka içerik eklenebilir */}
+            </div>
+          </aside>
+        </div>
       </main>
 
       {/* Create Post Dialog */}

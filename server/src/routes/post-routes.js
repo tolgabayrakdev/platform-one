@@ -8,6 +8,7 @@ const postController = new PostController();
 // Public route - auth optional (auth varsa scope=my, yoksa scope=all)
 router.get('/', optionalAuth, postController.getPosts.bind(postController));
 router.get('/my', authenticateToken, postController.getMyPosts.bind(postController)); // Kendi gönderilerim
+router.get('/trends', optionalAuth, postController.getTrends.bind(postController)); // Trend verileri
 router.post('/', authenticateToken, postController.createPost.bind(postController));
 router.delete('/:id', authenticateToken, postController.deletePost.bind(postController));
 

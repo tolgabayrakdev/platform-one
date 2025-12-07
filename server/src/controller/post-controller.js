@@ -212,4 +212,41 @@ export default class PostController {
       next(error);
     }
   }
+
+  /**
+   * Trend verilerini getir
+   * GET /api/posts/trends
+   * Query params: cityId (opsiyonel - home sayfası için)
+   */
+  async getTrends(req, res, next) {
+    try {
+      const userId = req.user?.userId;
+      let cityId = null;
+
+      // Eğer cityId query param olarak gelmişse kullan
+      if (req.query.cityId) {
+        cityId = parseInt(req.query.cityId);
+      } else if (userId) {
+        // Auth varsa kullanıcının şehrini al
+        const profile = await this.userService.getProfile(userId);
+        if (profile?.city) {
+          cityId = profile.city.id;
+        }
+      }
+
+      const [trendingBrands, trendingCities, trendingCategories] = await Promise.all([
+        this.postService.getTrendingBrands(cityId, 3),
+        cityId ? [] : this.postService.getTrendingCities(3), // Sadece tüm Türkiye için şehirler
+        this.postService.getTrendingCategories(3)
+      ]);
+
+      res.status(200).json({
+        brands: trendingBrands,
+        cities: trendingCities,
+        categories: trendingCategories
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

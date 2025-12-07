@@ -108,6 +108,11 @@ export default function FeedPage() {
   const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
   const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Trendler
+  const [trendingBrands, setTrendingBrands] = useState<Array<{ id: number; name: string; post_count: number }>>([]);
+  const [trendingCities, setTrendingCities] = useState<Array<{ id: number; name: string; post_count: number }>>([]);
+  const [trendingCategories, setTrendingCategories] = useState<Array<{ category: string; post_count: number }>>([]);
 
   // Infinite scroll
   const [page, setPage] = useState(1);
@@ -157,8 +162,26 @@ export default function FeedPage() {
     fetchProfile();
     // Postları da hemen yükle (profile beklemeyi bekleme)
     fetchPosts(1, true);
+    fetchTrends();
     initialLoadDone.current = true;
   }, []);
+
+  async function fetchTrends() {
+    try {
+      const res = await fetch("/api/posts/trends", {
+        credentials: "include",
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setTrendingBrands(data.brands || []);
+        setTrendingCities(data.cities || []);
+        setTrendingCategories(data.categories || []);
+      }
+    } catch {
+      // Hata yok say
+    }
+  }
 
   // Filtre değiştiğinde gönderileri yeniden al
   useEffect(() => {
@@ -541,7 +564,7 @@ export default function FeedPage() {
     <div className="min-h-screen bg-background">
       {/* Header - Minimal */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-3xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-4">
           <div className="flex items-center justify-between h-12">
             <span className="text-sm font-medium">
               Keşfet
@@ -709,9 +732,132 @@ export default function FeedPage() {
         </DrawerContent>
       </Drawer>
 
-      {/* Content */}
-      <main className="max-w-3xl mx-auto pb-24">
-        {/* Posts */}
+      {/* Content - LinkedIn tarzı 3 kolonlu layout */}
+      <main className="max-w-7xl mx-auto pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:px-4">
+          {/* Sol Sidebar - Trendler (Desktop'ta görünür) */}
+          <aside className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-16 space-y-4">
+              {!fetching && (trendingBrands.length > 0 || trendingCities.length > 0) && (
+                <div className="bg-card border border-border rounded-lg p-4 h-fit">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <span>🔥</span>
+                    <span>Trendler</span>
+                  </h3>
+                  
+                  {/* Trend Markalar */}
+                  {trendingBrands.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Popüler Markalar</p>
+                      <div className="space-y-1.5">
+                        {trendingBrands.map((brand) => (
+                          <button
+                            key={brand.id}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSelectedBrand(brand.id);
+                              setSelectedModel(null);
+                              setSelectedCity(null);
+                              setShowFilters(false);
+                            }}
+                            className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center justify-between"
+                          >
+                            <span>🚗 {brand.name}</span>
+                            <span className="text-muted-foreground">{brand.post_count}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Trend Şehirler */}
+                  {trendingCities.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Popüler Şehirler</p>
+                      <div className="space-y-1.5">
+                        {trendingCities.map((city) => (
+                          <button
+                            key={city.id}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSelectedCity(city.id);
+                              setSelectedBrand(null);
+                              setSelectedModel(null);
+                              setShowFilters(false);
+                            }}
+                            className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center justify-between"
+                          >
+                            <span>📍 {city.name}</span>
+                            <span className="text-muted-foreground">{city.post_count}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* Ana İçerik - Postlar */}
+          <div className="lg:col-span-6 w-full px-2 lg:px-0">
+            {/* Mobilde Trendler - Horizontal Scroll */}
+            <div className="lg:hidden mb-4 mt-4">
+              {(trendingBrands.length > 0 || trendingCities.length > 0 || trendingCategories.length > 0) && (
+                <div className="px-3 py-3 border border-border rounded-lg bg-card">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-muted-foreground">🔥 TREND</span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                    {trendingBrands.map((brand) => (
+                      <button
+                        key={brand.id}
+                        onClick={() => {
+                          setSelectedBrand(brand.id);
+                          setSelectedModel(null);
+                          setSelectedCity(null);
+                          setShowFilters(false);
+                        }}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 transition-colors"
+                      >
+                        🚗 {brand.name} ({brand.post_count})
+                      </button>
+                    ))}
+                    {trendingCities.map((city) => (
+                      <button
+                        key={city.id}
+                        onClick={() => {
+                          setSelectedCity(city.id);
+                          setSelectedBrand(null);
+                          setSelectedModel(null);
+                          setShowFilters(false);
+                        }}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 transition-colors"
+                      >
+                        📍 {city.name} ({city.post_count})
+                      </button>
+                    ))}
+                    {trendingCategories.map((cat) => {
+                      const categoryLabel = CATEGORY_LABELS[cat.category];
+                      return (
+                        <button
+                          key={cat.category}
+                          onClick={() => {
+                            setSelectedCategory(cat.category);
+                            setShowFilters(false);
+                          }}
+                          className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 transition-colors"
+                        >
+                          {categoryLabel?.emoji || "📌"} {categoryLabel?.label || cat.category} ({cat.post_count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Posts */}
         {fetching ? (
           <div className="flex justify-center py-16">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -857,6 +1003,41 @@ export default function FeedPage() {
             )}
           </div>
         )}
+          </div>
+
+          {/* Sağ Sidebar - Trendler (Desktop'ta görünür) */}
+          <aside className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-16 space-y-4">
+              {!fetching && trendingCategories.length > 0 && (
+                <div className="bg-card border border-border rounded-lg p-4 h-fit">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <span>🔥</span>
+                    <span>Popüler Kategoriler</span>
+                  </h3>
+                  <div className="space-y-1.5">
+                    {trendingCategories.map((cat) => {
+                      const categoryLabel = CATEGORY_LABELS[cat.category];
+                      return (
+                        <button
+                          key={cat.category}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSelectedCategory(cat.category);
+                            setShowFilters(false);
+                          }}
+                          className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center justify-between"
+                        >
+                          <span>{categoryLabel?.emoji || "📌"} {categoryLabel?.label || cat.category}</span>
+                          <span className="text-muted-foreground">{cat.post_count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       </main>
 
       {/* Create Post Dialog - Sadece auth varsa */}

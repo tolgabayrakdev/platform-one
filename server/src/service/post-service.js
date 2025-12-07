@@ -315,4 +315,91 @@ export default class PostService {
       }
     }));
   }
+
+  /**
+   * Trend markaları getir
+   * @param {number|null} cityId - Şehir ID (null ise tüm Türkiye)
+   * @param {number} limit - Kaç tane döndürülecek
+   */
+  async getTrendingBrands(cityId = null, limit = 3) {
+    let query = `
+      SELECT 
+        b.id,
+        b.name,
+        COUNT(p.id) as post_count
+      FROM posts p
+      JOIN brands b ON p.brand_id = b.id
+    `;
+
+    const params = [];
+    if (cityId) {
+      query += ` WHERE p.city_id = $1`;
+      params.push(cityId);
+    }
+
+    query += `
+      GROUP BY b.id, b.name
+      ORDER BY post_count DESC
+      LIMIT $${params.length + 1}
+    `;
+    params.push(limit);
+
+    const result = await pool.query(query, params);
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      post_count: parseInt(row.post_count)
+    }));
+  }
+
+  /**
+   * Trend şehirleri getir
+   * @param {number} limit - Kaç tane döndürülecek
+   */
+  async getTrendingCities(limit = 3) {
+    const result = await pool.query(
+      `
+      SELECT 
+        c.id,
+        c.name,
+        COUNT(p.id) as post_count
+      FROM posts p
+      JOIN cities c ON p.city_id = c.id
+      GROUP BY c.id, c.name
+      ORDER BY post_count DESC
+      LIMIT $1
+      `,
+      [limit]
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      post_count: parseInt(row.post_count)
+    }));
+  }
+
+  /**
+   * Trend kategorileri getir
+   * @param {number} limit - Kaç tane döndürülecek
+   */
+  async getTrendingCategories(limit = 3) {
+    const result = await pool.query(
+      `
+      SELECT 
+        p.category,
+        COUNT(p.id) as post_count
+      FROM posts p
+      GROUP BY p.category
+      ORDER BY post_count DESC
+      LIMIT $1
+      `,
+      [limit]
+    );
+
+    return result.rows.map((row) => ({
+      category: row.category,
+      post_count: parseInt(row.post_count)
+    }));
+  }
 }
