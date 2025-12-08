@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import PostsList from "./posts-list";
 import LandingHero from "@/components/landing-hero";
 import LandingStats from "@/components/landing-stats";
@@ -97,7 +98,14 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-14 md:h-16">
             <Link href="/" className="flex items-center gap-2 md:gap-3">
-              <span className="text-xl md:text-2xl">🚗</span>
+              <Image
+                src="/Garajmuhabbet.png"
+                alt="Garaj Muhabbet Logo"
+                width={32}
+                height={32}
+                className="w-6 h-6 md:w-8 md:h-8"
+                priority
+              />
               <h1 className="text-lg md:text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Garaj Muhabbet
               </h1>

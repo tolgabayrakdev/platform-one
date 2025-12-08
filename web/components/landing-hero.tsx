@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LandingHero() {
   return (
@@ -17,7 +18,16 @@ export default function LandingHero() {
         transition={{ duration: 0.5, delay: 0.2 }}
         className="mb-4 md:mb-6"
       >
-        <span className="text-4xl md:text-6xl mb-3 md:mb-4 inline-block">🚗</span>
+        <div className="mb-3 md:mb-4 flex justify-center">
+          <Image
+            src="/Garajmuhabbet.png"
+            alt="Garaj Muhabbet Logo"
+            width={80}
+            height={80}
+            className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24"
+            priority
+          />
+        </div>
         <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 px-2">
           Sende Aramıza Katıl!
         </h2>
