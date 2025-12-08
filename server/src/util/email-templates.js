@@ -1,4 +1,4 @@
-export const BRAND_NAME = 'PlatformOne';
+export const BRAND_NAME = 'Garaj Muhabbet';
 
 /**
  * Hoş geldin email template'i

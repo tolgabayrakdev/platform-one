@@ -42,7 +42,7 @@ export default class AuthService {
 
             // Hoş geldin email'i gönder
             try {
-                await emailService.sendEmail(email, "Platform'a Hoş Geldiniz!", getWelcomeEmailTemplate(firstName));
+                await emailService.sendEmail(email, "Garaj Muhabbet'e Hoş Geldiniz!", getWelcomeEmailTemplate(firstName));
             } catch (emailError) {
                 // Email gönderilemezse de kullanıcı oluşturulmuş olur (non-critical)
                 // Log'la ama hata fırlatma
@@ -114,7 +114,7 @@ export default class AuthService {
             // SMS gönder
             try {
                 await sendSms({
-                    msg: `PlatformOne doğrulama kodunuz: ${phoneCode}`,
+                    msg: `Garaj Muhabbet doğrulama kodunuz: ${phoneCode}`,
                     no: user.phone
                 });
             } catch {
@@ -280,7 +280,7 @@ export default class AuthService {
 
             // SMS gönder
             await sendSms({
-                msg: `PlatformOne doğrulama kodunuz: ${phoneCode}`,
+                msg: `Garaj Muhabbet doğrulama kodunuz: ${phoneCode}`,
                 no: user.phone
             });
 

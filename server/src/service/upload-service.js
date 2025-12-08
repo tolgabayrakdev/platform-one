@@ -9,7 +9,7 @@ export default class UploadService {
      * @param {string} folder - Cloudinary folder (opsiyonel)
      * @returns {Promise<{url: string, public_id: string}>}
      */
-    async uploadImage(fileBuffer, folder = 'platform-one/posts') {
+    async uploadImage(fileBuffer, folder = 'garajmuhabbet/posts') {
         return new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
@@ -60,7 +60,7 @@ export default class UploadService {
      * @param {string} folder - Cloudinary folder
      * @returns {Promise<Array<{url: string, public_id: string}>>}
      */
-    async uploadMultipleImages(fileBuffers, folder = 'platform-one/posts') {
+    async uploadMultipleImages(fileBuffers, folder = 'garajmuhabbet/posts') {
         const uploadPromises = fileBuffers.map((buffer) => this.uploadImage(buffer, folder));
         return Promise.all(uploadPromises);
     }

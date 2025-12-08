@@ -38,7 +38,7 @@ class EmailService {
             subject,
             html,
             headers: {
-                'X-Entity-Ref-ID': 'platform-one',
+                'X-Entity-Ref-ID': 'garajmuhabbet',
                 'X-Mailer': `${BRAND_NAME} Email Service`,
                 'List-Unsubscribe': `<mailto:${process.env.EMAIL_USER}?subject=Unsubscribe>`,
                 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'

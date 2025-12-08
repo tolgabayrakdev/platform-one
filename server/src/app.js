@@ -63,7 +63,7 @@ app.use(errorHandler);
 
 app.get('/', (_req, res) => {
     res.json({
-        message: 'PlatformOne API',
+        message: 'Garaj Muhabbet API',
         version: '1.0.0'
     });
 });
