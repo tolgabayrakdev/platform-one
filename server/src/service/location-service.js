@@ -13,10 +13,7 @@ export default class LocationService {
    * Bir ile ait ilçeleri getir
    */
   async getDistricts(cityId) {
-    const result = await pool.query(
-      'SELECT id, name FROM districts WHERE city_id = $1 ORDER BY name',
-      [cityId]
-    );
+    const result = await pool.query('SELECT id, name FROM districts WHERE city_id = $1 ORDER BY name', [cityId]);
     return result.rows;
   }
 
@@ -32,10 +29,7 @@ export default class LocationService {
    * Bir markaya ait modelleri getir
    */
   async getModels(brandId) {
-    const result = await pool.query(
-      'SELECT id, name FROM models WHERE brand_id = $1 ORDER BY name',
-      [brandId]
-    );
+    const result = await pool.query('SELECT id, name FROM models WHERE brand_id = $1 ORDER BY name', [brandId]);
     return result.rows;
   }
 }

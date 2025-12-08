@@ -15,10 +15,7 @@ export default class CommentService {
 
     // Eğer parent comment varsa, kontrol et
     if (parentCommentId) {
-      const parentCheck = await pool.query(
-        'SELECT id, post_id FROM comments WHERE id = $1',
-        [parentCommentId]
-      );
+      const parentCheck = await pool.query('SELECT id, post_id FROM comments WHERE id = $1', [parentCommentId]);
       if (parentCheck.rows.length === 0) {
         throw new HttpException(404, 'Yorum bulunamadı');
       }
@@ -46,32 +43,23 @@ export default class CommentService {
     const comment = result.rows[0];
 
     // Kullanıcı bilgilerini çek
-    const userResult = await pool.query(
-      'SELECT id, first_name, last_name FROM users WHERE id = $1',
-      [comment.user_id]
-    );
+    const userResult = await pool.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [comment.user_id]);
 
     const commenter = userResult.rows[0];
 
     // Bildirim oluştur
-    const postOwnerResult = await pool.query(
-      'SELECT user_id FROM posts WHERE id = $1',
-      [postId]
-    );
+    const postOwnerResult = await pool.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
 
     if (postOwnerResult.rows.length > 0) {
       const postOwnerId = postOwnerResult.rows[0].user_id;
-      
+
       if (parentCommentId) {
         // Reply ise: Yorum sahibine bildirim gönder
-        const parentCommentResult = await pool.query(
-          'SELECT user_id FROM comments WHERE id = $1',
-          [parentCommentId]
-        );
-        
+        const parentCommentResult = await pool.query('SELECT user_id FROM comments WHERE id = $1', [parentCommentId]);
+
         if (parentCommentResult.rows.length > 0) {
           const parentCommentOwnerId = parentCommentResult.rows[0].user_id;
-          
+
           // Kendi yorumuna cevap vermiyorsa bildirim oluştur
           if (parentCommentOwnerId !== userId) {
             const message = `${commenter.first_name} ${commenter.last_name} yorumunuza cevap verdi`;
@@ -80,7 +68,7 @@ export default class CommentService {
                VALUES ($1, 'comment', $2, $3, $4)`,
               [parentCommentOwnerId, postId, comment.id, message]
             );
-            
+
             // SSE ile anlık bildirim gönder
             const unreadCount = await pool.query(
               'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
@@ -106,7 +94,7 @@ export default class CommentService {
              VALUES ($1, 'comment', $2, $3, $4)`,
             [postOwnerId, postId, comment.id, message]
           );
-          
+
           // SSE ile anlık bildirim gönder
           const unreadCount = await pool.query(
             'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
@@ -245,10 +233,7 @@ export default class CommentService {
    */
   async deleteComment(commentId, userId) {
     // Yorum var mı ve bu kullanıcıya ait mi kontrol et
-    const checkResult = await pool.query(
-      'SELECT user_id FROM comments WHERE id = $1',
-      [commentId]
-    );
+    const checkResult = await pool.query('SELECT user_id FROM comments WHERE id = $1', [commentId]);
 
     if (checkResult.rows.length === 0) {
       throw new HttpException(404, 'Yorum bulunamadı');

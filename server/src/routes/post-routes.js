@@ -9,6 +9,7 @@ const postController = new PostController();
 router.get('/', optionalAuth, postController.getPosts.bind(postController));
 router.get('/my', authenticateToken, postController.getMyPosts.bind(postController)); // Kendi gönderilerim
 router.get('/trends', optionalAuth, postController.getTrends.bind(postController)); // Trend verileri
+router.get('/stats', postController.getStats.bind(postController)); // Platform istatistikleri
 router.post('/', authenticateToken, postController.createPost.bind(postController));
 router.delete('/:id', authenticateToken, postController.deletePost.bind(postController));
 

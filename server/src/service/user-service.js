@@ -7,10 +7,7 @@ export default class UserService {
    */
   async updateCity(userId, cityId) {
     // İl var mı kontrol et
-    const cityCheck = await pool.query(
-      'SELECT id FROM cities WHERE id = $1',
-      [cityId]
-    );
+    const cityCheck = await pool.query('SELECT id FROM cities WHERE id = $1', [cityId]);
 
     if (cityCheck.rows.length === 0) {
       throw new HttpException(404, 'İl bulunamadı');
@@ -107,18 +104,19 @@ export default class UserService {
             name: user.city_name
           }
         : null,
-      vehicle: user.brand_id && user.model_id
-        ? {
-            brand: {
-              id: user.brand_id,
-              name: user.brand_name
-            },
-            model: {
-              id: user.model_id,
-              name: user.model_name
+      vehicle:
+        user.brand_id && user.model_id
+          ? {
+              brand: {
+                id: user.brand_id,
+                name: user.brand_name
+              },
+              model: {
+                id: user.model_id,
+                name: user.model_name
+              }
             }
-          }
-        : null
+          : null
     };
   }
 }

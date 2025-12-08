@@ -61,7 +61,7 @@ export default class UploadService {
    * @returns {Promise<Array<{url: string, public_id: string}>>}
    */
   async uploadMultipleImages(fileBuffers, folder = 'platform-one/posts') {
-    const uploadPromises = fileBuffers.map(buffer => this.uploadImage(buffer, folder));
+    const uploadPromises = fileBuffers.map((buffer) => this.uploadImage(buffer, folder));
     return Promise.all(uploadPromises);
   }
 }

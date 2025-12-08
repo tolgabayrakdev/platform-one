@@ -28,10 +28,10 @@ export default class PostController {
         const profile = await this.userService.getProfile(userId);
         const scope = req.query.scope || 'my'; // 'my' veya 'all'
 
-      if (scope === 'my') {
+        if (scope === 'my') {
           // Kendi ili - ama city yoksa all'a geç
           if (profile.city) {
-        filters.cityId = profile.city.id;
+            filters.cityId = profile.city.id;
           } else {
             // City yoksa tüm Türkiye göster
             // Filtre yoksa tüm Türkiye
@@ -109,7 +109,15 @@ export default class PostController {
 
       const images = req.body.images || [];
 
-      const post = await this.postService.createPost(userId, profile.city.id, brandId, modelId, category, content, images);
+      const post = await this.postService.createPost(
+        userId,
+        profile.city.id,
+        brandId,
+        modelId,
+        category,
+        content,
+        images
+      );
 
       res.status(201).json({
         message: 'Gönderi oluşturuldu',
@@ -180,7 +188,7 @@ export default class PostController {
 
       // Önce gönderiyi al - marka ve model bilgisi için
       const post = await this.postService.getPost(id);
-      
+
       // Benzer gönderileri getir
       const relatedPosts = await this.postService.getRelatedPosts(id, post.brand_id, post.model_id, limit);
 
@@ -222,21 +230,25 @@ export default class PostController {
     try {
       const userId = req.user?.userId;
       let cityId = null;
+      const isGlobal = req.query.global === 'true'; // Feed sayfası için global trendler
 
-      // Eğer cityId query param olarak gelmişse kullan
-      if (req.query.cityId) {
-        cityId = parseInt(req.query.cityId);
-      } else if (userId) {
-        // Auth varsa kullanıcının şehrini al
-        const profile = await this.userService.getProfile(userId);
-        if (profile?.city) {
-          cityId = profile.city.id;
+      // Eğer global=true ise cityId kullanma (feed sayfası için)
+      if (!isGlobal) {
+        // Eğer cityId query param olarak gelmişse kullan
+        if (req.query.cityId) {
+          cityId = parseInt(req.query.cityId);
+        } else if (userId) {
+          // Auth varsa kullanıcının şehrini al
+          const profile = await this.userService.getProfile(userId);
+          if (profile?.city) {
+            cityId = profile.city.id;
+          }
         }
       }
 
       const [trendingBrands, trendingCities, trendingCategories] = await Promise.all([
-        this.postService.getTrendingBrands(cityId, 3),
-        cityId ? [] : this.postService.getTrendingCities(3), // Sadece tüm Türkiye için şehirler
+        this.postService.getTrendingBrands(cityId, 5),
+        cityId ? [] : this.postService.getTrendingCities(5), // Sadece tüm Türkiye için şehirler
         this.postService.getTrendingCategories(3)
       ]);
 
@@ -245,6 +257,19 @@ export default class PostController {
         cities: trendingCities,
         categories: trendingCategories
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Platform istatistiklerini getir
+   * GET /api/posts/stats
+   */
+  async getStats(req, res, next) {
+    try {
+      const stats = await this.postService.getPlatformStats();
+      res.status(200).json(stats);
     } catch (error) {
       next(error);
     }

@@ -380,6 +380,25 @@ export default class PostService {
   }
 
   /**
+   * Platform istatistiklerini getir
+   */
+  async getPlatformStats() {
+    const [postsResult, usersResult, citiesResult, brandsResult] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM posts'),
+      pool.query('SELECT COUNT(*) FROM users'),
+      pool.query('SELECT COUNT(*) FROM cities'),
+      pool.query('SELECT COUNT(*) FROM brands')
+    ]);
+
+    return {
+      totalPosts: parseInt(postsResult.rows[0].count),
+      totalUsers: parseInt(usersResult.rows[0].count),
+      totalCities: parseInt(citiesResult.rows[0].count),
+      totalBrands: parseInt(brandsResult.rows[0].count)
+    };
+  }
+
+  /**
    * Trend kategorileri getir
    * @param {number} limit - Kaç tane döndürülecek
    */

@@ -24,10 +24,7 @@ export default class NotificationService {
       [userId, limit, offset]
     );
 
-    const countResult = await pool.query(
-      'SELECT COUNT(*) FROM notifications WHERE user_id = $1',
-      [userId]
-    );
+    const countResult = await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id = $1', [userId]);
 
     const unreadCountResult = await pool.query(
       'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
@@ -62,10 +59,7 @@ export default class NotificationService {
    */
   async markAsRead(notificationId, userId) {
     // Bildirim var mı ve bu kullanıcıya ait mi kontrol et
-    const checkResult = await pool.query(
-      'SELECT user_id FROM notifications WHERE id = $1',
-      [notificationId]
-    );
+    const checkResult = await pool.query('SELECT user_id FROM notifications WHERE id = $1', [notificationId]);
 
     if (checkResult.rows.length === 0) {
       throw new HttpException(404, 'Bildirim bulunamadı');
@@ -75,10 +69,7 @@ export default class NotificationService {
       throw new HttpException(403, 'Bu bildirimi görüntüleme yetkiniz yok');
     }
 
-    await pool.query(
-      'UPDATE notifications SET is_read = true WHERE id = $1',
-      [notificationId]
-    );
+    await pool.query('UPDATE notifications SET is_read = true WHERE id = $1', [notificationId]);
 
     return { message: 'Bildirim okundu olarak işaretlendi' };
   }
@@ -87,10 +78,7 @@ export default class NotificationService {
    * Tüm bildirimleri okundu olarak işaretle
    */
   async markAllAsRead(userId) {
-    await pool.query(
-      'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',
-      [userId]
-    );
+    await pool.query('UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false', [userId]);
 
     return { message: 'Tüm bildirimler okundu olarak işaretlendi' };
   }
@@ -99,10 +87,9 @@ export default class NotificationService {
    * Okunmamış bildirim sayısını getir
    */
   async getUnreadCount(userId) {
-    const result = await pool.query(
-      'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
-      [userId]
-    );
+    const result = await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false', [
+      userId
+    ]);
 
     return parseInt(result.rows[0].count);
   }
@@ -124,10 +111,7 @@ export default class NotificationService {
 
     const notificationId = notificationResult.rows[0].id;
 
-    await pool.query(
-      'UPDATE notifications SET is_read = true WHERE id = $1',
-      [notificationId]
-    );
+    await pool.query('UPDATE notifications SET is_read = true WHERE id = $1', [notificationId]);
 
     return { message: 'Bildirim okundu olarak işaretlendi' };
   }

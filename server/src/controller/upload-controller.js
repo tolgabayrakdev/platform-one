@@ -9,7 +9,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max
+    fileSize: 5 * 1024 * 1024 // 5MB max
   },
   fileFilter: (req, file, cb) => {
     // Sadece resim dosyaları
@@ -48,7 +48,7 @@ export default class UploadController {
       }
 
       // Resimleri Cloudinary'ye yükle
-      const fileBuffers = req.files.map(file => file.buffer);
+      const fileBuffers = req.files.map((file) => file.buffer);
       const uploadResults = await uploadService.uploadMultipleImages(fileBuffers);
 
       res.status(200).json({

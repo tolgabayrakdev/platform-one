@@ -39,7 +39,7 @@ class NotificationManager {
     if (this.connections.has(userId)) {
       const userConnections = this.connections.get(userId);
       const message = `data: ${JSON.stringify(data)}\n\n`;
-      
+
       const toRemove = [];
       userConnections.forEach((res) => {
         try {
@@ -53,7 +53,7 @@ class NotificationManager {
           toRemove.push(res);
         }
       });
-      
+
       // Kapalı bağlantıları temizle
       toRemove.forEach((res) => {
         this.removeConnection(userId, res);
