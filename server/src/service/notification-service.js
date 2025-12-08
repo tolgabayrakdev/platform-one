@@ -2,14 +2,14 @@ import pool from '../config/database.js';
 import HttpException from '../exceptions/http-exception.js';
 
 export default class NotificationService {
-  /**
-   * Kullanıcının bildirimlerini getir
-   */
-  async getNotifications(userId, page = 1, limit = 50) {
-    const offset = (page - 1) * limit;
+    /**
+     * Kullanıcının bildirimlerini getir
+     */
+    async getNotifications(userId, page = 1, limit = 50) {
+        const offset = (page - 1) * limit;
 
-    const result = await pool.query(
-      `SELECT 
+        const result = await pool.query(
+            `SELECT 
         n.id,
         n.type,
         n.message,
@@ -21,98 +21,98 @@ export default class NotificationService {
       WHERE n.user_id = $1
       ORDER BY n.created_at DESC
       LIMIT $2 OFFSET $3`,
-      [userId, limit, offset]
-    );
+            [userId, limit, offset]
+        );
 
-    const countResult = await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id = $1', [userId]);
+        const countResult = await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id = $1', [userId]);
 
-    const unreadCountResult = await pool.query(
-      'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
-      [userId]
-    );
+        const unreadCountResult = await pool.query(
+            'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+            [userId]
+        );
 
-    const total = parseInt(countResult.rows[0].count);
-    const unreadCount = parseInt(unreadCountResult.rows[0].count);
+        const total = parseInt(countResult.rows[0].count);
+        const unreadCount = parseInt(unreadCountResult.rows[0].count);
 
-    return {
-      notifications: result.rows.map((notif) => ({
-        id: notif.id,
-        type: notif.type,
-        message: notif.message,
-        is_read: notif.is_read,
-        created_at: notif.created_at,
-        post_id: notif.post_id,
-        comment_id: notif.comment_id
-      })),
-      unread_count: unreadCount,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
-  }
-
-  /**
-   * Bildirimi okundu olarak işaretle
-   */
-  async markAsRead(notificationId, userId) {
-    // Bildirim var mı ve bu kullanıcıya ait mi kontrol et
-    const checkResult = await pool.query('SELECT user_id FROM notifications WHERE id = $1', [notificationId]);
-
-    if (checkResult.rows.length === 0) {
-      throw new HttpException(404, 'Bildirim bulunamadı');
+        return {
+            notifications: result.rows.map((notif) => ({
+                id: notif.id,
+                type: notif.type,
+                message: notif.message,
+                is_read: notif.is_read,
+                created_at: notif.created_at,
+                post_id: notif.post_id,
+                comment_id: notif.comment_id
+            })),
+            unread_count: unreadCount,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
 
-    if (checkResult.rows[0].user_id !== userId) {
-      throw new HttpException(403, 'Bu bildirimi görüntüleme yetkiniz yok');
+    /**
+     * Bildirimi okundu olarak işaretle
+     */
+    async markAsRead(notificationId, userId) {
+        // Bildirim var mı ve bu kullanıcıya ait mi kontrol et
+        const checkResult = await pool.query('SELECT user_id FROM notifications WHERE id = $1', [notificationId]);
+
+        if (checkResult.rows.length === 0) {
+            throw new HttpException(404, 'Bildirim bulunamadı');
+        }
+
+        if (checkResult.rows[0].user_id !== userId) {
+            throw new HttpException(403, 'Bu bildirimi görüntüleme yetkiniz yok');
+        }
+
+        await pool.query('UPDATE notifications SET is_read = true WHERE id = $1', [notificationId]);
+
+        return { message: 'Bildirim okundu olarak işaretlendi' };
     }
 
-    await pool.query('UPDATE notifications SET is_read = true WHERE id = $1', [notificationId]);
+    /**
+     * Tüm bildirimleri okundu olarak işaretle
+     */
+    async markAllAsRead(userId) {
+        await pool.query('UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false', [userId]);
 
-    return { message: 'Bildirim okundu olarak işaretlendi' };
-  }
-
-  /**
-   * Tüm bildirimleri okundu olarak işaretle
-   */
-  async markAllAsRead(userId) {
-    await pool.query('UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false', [userId]);
-
-    return { message: 'Tüm bildirimler okundu olarak işaretlendi' };
-  }
-
-  /**
-   * Okunmamış bildirim sayısını getir
-   */
-  async getUnreadCount(userId) {
-    const result = await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false', [
-      userId
-    ]);
-
-    return parseInt(result.rows[0].count);
-  }
-
-  /**
-   * Comment ID'ye göre bildirimi okundu olarak işaretle
-   */
-  async markAsReadByCommentId(commentId, userId) {
-    // Bu yorumla ilgili bildirimi bul
-    const notificationResult = await pool.query(
-      'SELECT id, user_id FROM notifications WHERE comment_id = $1 AND user_id = $2 AND is_read = false',
-      [commentId, userId]
-    );
-
-    if (notificationResult.rows.length === 0) {
-      // Bildirim yoksa veya zaten okunmuşsa sessizce geç
-      return { message: 'Bildirim bulunamadı veya zaten okunmuş' };
+        return { message: 'Tüm bildirimler okundu olarak işaretlendi' };
     }
 
-    const notificationId = notificationResult.rows[0].id;
+    /**
+     * Okunmamış bildirim sayısını getir
+     */
+    async getUnreadCount(userId) {
+        const result = await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false', [
+            userId
+        ]);
 
-    await pool.query('UPDATE notifications SET is_read = true WHERE id = $1', [notificationId]);
+        return parseInt(result.rows[0].count);
+    }
 
-    return { message: 'Bildirim okundu olarak işaretlendi' };
-  }
+    /**
+     * Comment ID'ye göre bildirimi okundu olarak işaretle
+     */
+    async markAsReadByCommentId(commentId, userId) {
+        // Bu yorumla ilgili bildirimi bul
+        const notificationResult = await pool.query(
+            'SELECT id, user_id FROM notifications WHERE comment_id = $1 AND user_id = $2 AND is_read = false',
+            [commentId, userId]
+        );
+
+        if (notificationResult.rows.length === 0) {
+            // Bildirim yoksa veya zaten okunmuşsa sessizce geç
+            return { message: 'Bildirim bulunamadı veya zaten okunmuş' };
+        }
+
+        const notificationId = notificationResult.rows[0].id;
+
+        await pool.query('UPDATE notifications SET is_read = true WHERE id = $1', [notificationId]);
+
+        return { message: 'Bildirim okundu olarak işaretlendi' };
+    }
 }

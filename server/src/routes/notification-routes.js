@@ -12,9 +12,9 @@ router.get('/stream', authenticateToken, notificationController.streamNotificati
 router.get('/unread-count', authenticateToken, notificationController.getUnreadCount.bind(notificationController));
 router.put('/:id/read', authenticateToken, notificationController.markAsRead.bind(notificationController));
 router.put(
-  '/comment/:commentId/read',
-  authenticateToken,
-  notificationController.markAsReadByCommentId.bind(notificationController)
+    '/comment/:commentId/read',
+    authenticateToken,
+    notificationController.markAsReadByCommentId.bind(notificationController)
 );
 router.put('/read-all', authenticateToken, notificationController.markAllAsRead.bind(notificationController));
 

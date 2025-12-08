@@ -24,11 +24,11 @@ app.set('trust proxy', 1);
 
 // CORS ayarları
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true, // Cookie'ler için gerekli
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true, // Cookie'ler için gerekli
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range']
 };
 
 app.use(cors(corsOptions));
@@ -39,11 +39,11 @@ app.use(morgan('dev'));
 
 // Genel rate limiter - SSE endpoint'i hariç
 app.use((req, res, next) => {
-  // SSE endpoint'i rate limiter'dan muaf (uzun süreli bağlantı)
-  if (req.path === '/api/notifications/stream') {
-    return next();
-  }
-  generalLimiter(req, res, next);
+    // SSE endpoint'i rate limiter'dan muaf (uzun süreli bağlantı)
+    if (req.path === '/api/notifications/stream') {
+        return next();
+    }
+    generalLimiter(req, res, next);
 });
 
 // Routes
@@ -58,27 +58,27 @@ app.use('/api/upload', uploadRoutes);
 app.use(errorHandler);
 
 app.get('/', (_req, res) => {
-  res.json({
-    message: 'PlatformOne API',
-    version: '1.0.0'
-  });
+    res.json({
+        message: 'PlatformOne API',
+        version: '1.0.0'
+    });
 });
 
 // Database bağlantı kontrolü
 async function checkDatabaseConnection() {
-  try {
-    const client = await pool.connect();
-    await client.query('SELECT NOW()');
-    client.release();
-    logger.info('Database connection successfully');
-  } catch (error) {
-    logger.error('Database connection error:', error);
-    process.exit(1);
-  }
+    try {
+        const client = await pool.connect();
+        await client.query('SELECT NOW()');
+        client.release();
+        logger.info('Database connection successfully');
+    } catch (error) {
+        logger.error('Database connection error:', error);
+        process.exit(1);
+    }
 }
 
 // Server'ı başlat
 app.listen(PORT, async () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  await checkDatabaseConnection();
+    console.log(`🚀 Server is running on port ${PORT}`);
+    await checkDatabaseConnection();
 });

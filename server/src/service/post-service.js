@@ -4,43 +4,43 @@ import HttpException from '../exceptions/http-exception.js';
 const VALID_CATEGORIES = ['soru', 'yedek_parca', 'servis', 'bakim', 'deneyim', 'yardim'];
 
 export default class PostService {
-  /**
-   * Gönderileri getir (filtreli)
-   * @param {Object} filters - { cityId, brandId, modelId, category }
-   * @param {number} page
-   * @param {number} limit
-   */
-  async getPosts(filters = {}, page = 1, limit = 20) {
-    const offset = (page - 1) * limit;
-    const { cityId, brandId, modelId, category } = filters;
+    /**
+     * Gönderileri getir (filtreli)
+     * @param {Object} filters - { cityId, brandId, modelId, category }
+     * @param {number} page
+     * @param {number} limit
+     */
+    async getPosts(filters = {}, page = 1, limit = 20) {
+        const offset = (page - 1) * limit;
+        const { cityId, brandId, modelId, category } = filters;
 
-    // Dinamik WHERE koşulları
-    const conditions = [];
-    const params = [];
-    let paramIndex = 1;
+        // Dinamik WHERE koşulları
+        const conditions = [];
+        const params = [];
+        let paramIndex = 1;
 
-    if (modelId) {
-      conditions.push(`p.model_id = $${paramIndex++}`);
-      params.push(modelId);
-    } else if (brandId) {
-      conditions.push(`p.brand_id = $${paramIndex++}`);
-      params.push(brandId);
-    }
+        if (modelId) {
+            conditions.push(`p.model_id = $${paramIndex++}`);
+            params.push(modelId);
+        } else if (brandId) {
+            conditions.push(`p.brand_id = $${paramIndex++}`);
+            params.push(brandId);
+        }
 
-    if (cityId) {
-      conditions.push(`p.city_id = $${paramIndex++}`);
-      params.push(cityId);
-    }
+        if (cityId) {
+            conditions.push(`p.city_id = $${paramIndex++}`);
+            params.push(cityId);
+        }
 
-    if (category && VALID_CATEGORIES.includes(category)) {
-      conditions.push(`p.category = $${paramIndex++}`);
-      params.push(category);
-    }
+        if (category && VALID_CATEGORIES.includes(category)) {
+            conditions.push(`p.category = $${paramIndex++}`);
+            params.push(category);
+        }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const result = await pool.query(
-      `SELECT 
+        const result = await pool.query(
+            `SELECT 
         p.id,
         p.category,
         p.content,
@@ -63,114 +63,114 @@ export default class PostService {
       GROUP BY p.id, u.id, u.first_name, u.last_name, c.name, b.name, m.name, p.images
       ORDER BY p.created_at DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
-      [...params, limit, offset]
-    );
+            [...params, limit, offset]
+        );
 
-    // Toplam sayı
-    const countResult = await pool.query(
-      `SELECT COUNT(*) FROM posts p
+        // Toplam sayı
+        const countResult = await pool.query(
+            `SELECT COUNT(*) FROM posts p
        JOIN brands b ON p.brand_id = b.id
        JOIN models m ON p.model_id = m.id
        ${whereClause}`,
-      params
-    );
+            params
+        );
 
-    const total = parseInt(countResult.rows[0].count);
+        const total = parseInt(countResult.rows[0].count);
 
-    return {
-      posts: result.rows.map((post) => ({
-        id: post.id,
-        category: post.category,
-        content: post.content,
-        images: post.images || [],
-        created_at: post.created_at,
-        comment_count: post.comment_count || 0,
-        user: {
-          id: post.user_id,
-          first_name: post.first_name,
-          last_name: post.last_name
-        },
-        location: {
-          city: post.city_name
-        },
-        vehicle: {
-          brand: post.brand_name,
-          model: post.model_name
+        return {
+            posts: result.rows.map((post) => ({
+                id: post.id,
+                category: post.category,
+                content: post.content,
+                images: post.images || [],
+                created_at: post.created_at,
+                comment_count: post.comment_count || 0,
+                user: {
+                    id: post.user_id,
+                    first_name: post.first_name,
+                    last_name: post.last_name
+                },
+                location: {
+                    city: post.city_name
+                },
+                vehicle: {
+                    brand: post.brand_name,
+                    model: post.model_name
+                }
+            })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+    }
+
+    /**
+     * Yeni gönderi oluştur
+     */
+    async createPost(userId, cityId, brandId, modelId, category, content, images = []) {
+        // Kategori kontrolü
+        if (!VALID_CATEGORIES.includes(category)) {
+            throw new HttpException(400, `Geçersiz kategori. Geçerli kategoriler: ${VALID_CATEGORIES.join(', ')}`);
         }
-      })),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
-  }
 
-  /**
-   * Yeni gönderi oluştur
-   */
-  async createPost(userId, cityId, brandId, modelId, category, content, images = []) {
-    // Kategori kontrolü
-    if (!VALID_CATEGORIES.includes(category)) {
-      throw new HttpException(400, `Geçersiz kategori. Geçerli kategoriler: ${VALID_CATEGORIES.join(', ')}`);
-    }
+        // İçerik kontrolü
+        if (!content || content.trim().length < 10) {
+            throw new HttpException(400, 'Gönderi içeriği en az 10 karakter olmalıdır');
+        }
 
-    // İçerik kontrolü
-    if (!content || content.trim().length < 10) {
-      throw new HttpException(400, 'Gönderi içeriği en az 10 karakter olmalıdır');
-    }
+        if (content.length > 500) {
+            throw new HttpException(400, 'Gönderi içeriği en fazla 500 karakter olabilir');
+        }
 
-    if (content.length > 500) {
-      throw new HttpException(400, 'Gönderi içeriği en fazla 500 karakter olabilir');
-    }
+        // Resim kontrolü
+        if (images && images.length > 2) {
+            throw new HttpException(400, 'En fazla 2 resim ekleyebilirsiniz');
+        }
 
-    // Resim kontrolü
-    if (images && images.length > 2) {
-      throw new HttpException(400, 'En fazla 2 resim ekleyebilirsiniz');
-    }
+        // Resimleri JSON formatına çevir
+        const imagesJson = JSON.stringify(images || []);
 
-    // Resimleri JSON formatına çevir
-    const imagesJson = JSON.stringify(images || []);
-
-    const result = await pool.query(
-      `INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content, images)
+        const result = await pool.query(
+            `INSERT INTO posts (user_id, city_id, brand_id, model_id, category, content, images)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, category, content, images, created_at`,
-      [userId, cityId, brandId, modelId, category, content.trim(), imagesJson]
-    );
+            [userId, cityId, brandId, modelId, category, content.trim(), imagesJson]
+        );
 
-    return result.rows[0];
-  }
-
-  /**
-   * Gönderiyi sil (sadece kendi gönderisi)
-   */
-  async deletePost(postId, userId) {
-    // Gönderi var mı ve bu kullanıcıya ait mi kontrol et
-    const checkResult = await pool.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
-
-    if (checkResult.rows.length === 0) {
-      throw new HttpException(404, 'Gönderi bulunamadı');
+        return result.rows[0];
     }
 
-    if (checkResult.rows[0].user_id !== userId) {
-      throw new HttpException(403, 'Bu gönderiyi silme yetkiniz yok');
+    /**
+     * Gönderiyi sil (sadece kendi gönderisi)
+     */
+    async deletePost(postId, userId) {
+        // Gönderi var mı ve bu kullanıcıya ait mi kontrol et
+        const checkResult = await pool.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
+
+        if (checkResult.rows.length === 0) {
+            throw new HttpException(404, 'Gönderi bulunamadı');
+        }
+
+        if (checkResult.rows[0].user_id !== userId) {
+            throw new HttpException(403, 'Bu gönderiyi silme yetkiniz yok');
+        }
+
+        await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
+
+        return { message: 'Gönderi silindi' };
     }
 
-    await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
+    /**
+     * Kullanıcının kendi gönderilerini getir
+     */
+    async getMyPosts(userId, page = 1, limit = 20) {
+        const offset = (page - 1) * limit;
 
-    return { message: 'Gönderi silindi' };
-  }
-
-  /**
-   * Kullanıcının kendi gönderilerini getir
-   */
-  async getMyPosts(userId, page = 1, limit = 20) {
-    const offset = (page - 1) * limit;
-
-    const result = await pool.query(
-      `SELECT 
+        const result = await pool.query(
+            `SELECT 
         p.id,
         p.category,
         p.content,
@@ -189,44 +189,44 @@ export default class PostService {
       GROUP BY p.id, c.name, b.name, m.name, p.images
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3`,
-      [userId, limit, offset]
-    );
+            [userId, limit, offset]
+        );
 
-    const countResult = await pool.query('SELECT COUNT(*) FROM posts WHERE user_id = $1', [userId]);
+        const countResult = await pool.query('SELECT COUNT(*) FROM posts WHERE user_id = $1', [userId]);
 
-    const total = parseInt(countResult.rows[0].count);
+        const total = parseInt(countResult.rows[0].count);
 
-    return {
-      posts: result.rows.map((post) => ({
-        id: post.id,
-        category: post.category,
-        content: post.content,
-        images: post.images || [],
-        created_at: post.created_at,
-        comment_count: post.comment_count || 0,
-        location: {
-          city: post.city_name
-        },
-        vehicle: {
-          brand: post.brand_name,
-          model: post.model_name
-        }
-      })),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
-  }
+        return {
+            posts: result.rows.map((post) => ({
+                id: post.id,
+                category: post.category,
+                content: post.content,
+                images: post.images || [],
+                created_at: post.created_at,
+                comment_count: post.comment_count || 0,
+                location: {
+                    city: post.city_name
+                },
+                vehicle: {
+                    brand: post.brand_name,
+                    model: post.model_name
+                }
+            })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+    }
 
-  /**
-   * Tek bir gönderiyi getir
-   */
-  async getPost(postId) {
-    const result = await pool.query(
-      `SELECT 
+    /**
+     * Tek bir gönderiyi getir
+     */
+    async getPost(postId) {
+        const result = await pool.query(
+            `SELECT 
         p.id,
         p.category,
         p.content,
@@ -247,45 +247,45 @@ export default class PostService {
       JOIN brands b ON p.brand_id = b.id
       JOIN models m ON p.model_id = m.id
       WHERE p.id = $1`,
-      [postId]
-    );
+            [postId]
+        );
 
-    if (result.rows.length === 0) {
-      throw new HttpException(404, 'Gönderi bulunamadı');
+        if (result.rows.length === 0) {
+            throw new HttpException(404, 'Gönderi bulunamadı');
+        }
+
+        const post = result.rows[0];
+
+        return {
+            id: post.id,
+            category: post.category,
+            content: post.content,
+            images: post.images || [],
+            created_at: post.created_at,
+            city_id: post.city_id,
+            brand_id: post.brand_id,
+            model_id: post.model_id,
+            user: {
+                id: post.user_id,
+                first_name: post.first_name,
+                last_name: post.last_name
+            },
+            location: {
+                city: post.city_name
+            },
+            vehicle: {
+                brand: post.brand_name,
+                model: post.model_name
+            }
+        };
     }
 
-    const post = result.rows[0];
-
-    return {
-      id: post.id,
-      category: post.category,
-      content: post.content,
-      images: post.images || [],
-      created_at: post.created_at,
-      city_id: post.city_id,
-      brand_id: post.brand_id,
-      model_id: post.model_id,
-      user: {
-        id: post.user_id,
-        first_name: post.first_name,
-        last_name: post.last_name
-      },
-      location: {
-        city: post.city_name
-      },
-      vehicle: {
-        brand: post.brand_name,
-        model: post.model_name
-      }
-    };
-  }
-
-  /**
-   * Benzer gönderileri getir (aynı marka-model, mevcut gönderi hariç)
-   */
-  async getRelatedPosts(postId, brandId, modelId, limit = 3) {
-    const result = await pool.query(
-      `SELECT 
+    /**
+     * Benzer gönderileri getir (aynı marka-model, mevcut gönderi hariç)
+     */
+    async getRelatedPosts(postId, brandId, modelId, limit = 3) {
+        const result = await pool.query(
+            `SELECT 
         p.id,
         p.category,
         p.content,
@@ -299,30 +299,30 @@ export default class PostService {
       WHERE p.brand_id = $1 AND p.model_id = $2 AND p.id != $3
       ORDER BY p.created_at DESC
       LIMIT $4`,
-      [brandId, modelId, postId, limit]
-    );
+            [brandId, modelId, postId, limit]
+        );
 
-    return result.rows.map((post) => ({
-      id: post.id,
-      category: post.category,
-      content: post.content,
-      images: post.images || [],
-      created_at: post.created_at,
-      user: {
-        id: post.user_id,
-        first_name: post.first_name,
-        last_name: post.last_name
-      }
-    }));
-  }
+        return result.rows.map((post) => ({
+            id: post.id,
+            category: post.category,
+            content: post.content,
+            images: post.images || [],
+            created_at: post.created_at,
+            user: {
+                id: post.user_id,
+                first_name: post.first_name,
+                last_name: post.last_name
+            }
+        }));
+    }
 
-  /**
-   * Trend markaları getir
-   * @param {number|null} cityId - Şehir ID (null ise tüm Türkiye)
-   * @param {number} limit - Kaç tane döndürülecek
-   */
-  async getTrendingBrands(cityId = null, limit = 3) {
-    let query = `
+    /**
+     * Trend markaları getir
+     * @param {number|null} cityId - Şehir ID (null ise tüm Türkiye)
+     * @param {number} limit - Kaç tane döndürülecek
+     */
+    async getTrendingBrands(cityId = null, limit = 3) {
+        let query = `
       SELECT 
         b.id,
         b.name,
@@ -331,34 +331,34 @@ export default class PostService {
       JOIN brands b ON p.brand_id = b.id
     `;
 
-    const params = [];
-    if (cityId) {
-      query += ` WHERE p.city_id = $1`;
-      params.push(cityId);
-    }
+        const params = [];
+        if (cityId) {
+            query += ` WHERE p.city_id = $1`;
+            params.push(cityId);
+        }
 
-    query += `
+        query += `
       GROUP BY b.id, b.name
       ORDER BY post_count DESC
       LIMIT $${params.length + 1}
     `;
-    params.push(limit);
+        params.push(limit);
 
-    const result = await pool.query(query, params);
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      post_count: parseInt(row.post_count)
-    }));
-  }
+        const result = await pool.query(query, params);
+        return result.rows.map((row) => ({
+            id: row.id,
+            name: row.name,
+            post_count: parseInt(row.post_count)
+        }));
+    }
 
-  /**
-   * Trend şehirleri getir
-   * @param {number} limit - Kaç tane döndürülecek
-   */
-  async getTrendingCities(limit = 3) {
-    const result = await pool.query(
-      `
+    /**
+     * Trend şehirleri getir
+     * @param {number} limit - Kaç tane döndürülecek
+     */
+    async getTrendingCities(limit = 3) {
+        const result = await pool.query(
+            `
       SELECT 
         c.id,
         c.name,
@@ -369,42 +369,42 @@ export default class PostService {
       ORDER BY post_count DESC
       LIMIT $1
       `,
-      [limit]
-    );
+            [limit]
+        );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      post_count: parseInt(row.post_count)
-    }));
-  }
+        return result.rows.map((row) => ({
+            id: row.id,
+            name: row.name,
+            post_count: parseInt(row.post_count)
+        }));
+    }
 
-  /**
-   * Platform istatistiklerini getir
-   */
-  async getPlatformStats() {
-    const [postsResult, usersResult, citiesResult, brandsResult] = await Promise.all([
-      pool.query('SELECT COUNT(*) FROM posts'),
-      pool.query('SELECT COUNT(*) FROM users'),
-      pool.query('SELECT COUNT(*) FROM cities'),
-      pool.query('SELECT COUNT(*) FROM brands')
-    ]);
+    /**
+     * Platform istatistiklerini getir
+     */
+    async getPlatformStats() {
+        const [postsResult, usersResult, citiesResult, brandsResult] = await Promise.all([
+            pool.query('SELECT COUNT(*) FROM posts'),
+            pool.query('SELECT COUNT(*) FROM users'),
+            pool.query('SELECT COUNT(*) FROM cities'),
+            pool.query('SELECT COUNT(*) FROM brands')
+        ]);
 
-    return {
-      totalPosts: parseInt(postsResult.rows[0].count),
-      totalUsers: parseInt(usersResult.rows[0].count),
-      totalCities: parseInt(citiesResult.rows[0].count),
-      totalBrands: parseInt(brandsResult.rows[0].count)
-    };
-  }
+        return {
+            totalPosts: parseInt(postsResult.rows[0].count),
+            totalUsers: parseInt(usersResult.rows[0].count),
+            totalCities: parseInt(citiesResult.rows[0].count),
+            totalBrands: parseInt(brandsResult.rows[0].count)
+        };
+    }
 
-  /**
-   * Trend kategorileri getir
-   * @param {number} limit - Kaç tane döndürülecek
-   */
-  async getTrendingCategories(limit = 3) {
-    const result = await pool.query(
-      `
+    /**
+     * Trend kategorileri getir
+     * @param {number} limit - Kaç tane döndürülecek
+     */
+    async getTrendingCategories(limit = 3) {
+        const result = await pool.query(
+            `
       SELECT 
         p.category,
         COUNT(p.id) as post_count
@@ -413,12 +413,12 @@ export default class PostService {
       ORDER BY post_count DESC
       LIMIT $1
       `,
-      [limit]
-    );
+            [limit]
+        );
 
-    return result.rows.map((row) => ({
-      category: row.category,
-      post_count: parseInt(row.post_count)
-    }));
-  }
+        return result.rows.map((row) => ({
+            category: row.category,
+            post_count: parseInt(row.post_count)
+        }));
+    }
 }
