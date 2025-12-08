@@ -12,11 +12,16 @@ import {
 } from "@/components/ui/drawer";
 import { toast } from "sonner";
 import CreatePostDialog from "../feed/create-post-dialog";
+import PollCard from "@/components/poll-card";
 
 interface User {
   id: string;
   first_name: string;
   last_name: string;
+  badges?: {
+    comment: string | null;
+    post: string | null;
+  };
 }
 
 interface Location {
@@ -28,6 +33,24 @@ interface Vehicle {
   model: string;
 }
 
+interface PollOption {
+  id: number;
+  option_text: string;
+  option_order: number;
+  vote_count: number;
+  percentage: number;
+}
+
+interface Poll {
+  id: string;
+  question: string;
+  created_at: string;
+  options: PollOption[];
+  total_votes: number;
+  user_vote: number | null;
+  has_voted: boolean;
+}
+
 interface Post {
   id: string;
   category: string;
@@ -37,7 +60,8 @@ interface Post {
   comment_count?: number;
   user: User;
   location: Location;
-  vehicle: Vehicle;
+  vehicle: Vehicle | null;
+  poll?: Poll | null;
 }
 
 interface Profile {
@@ -67,6 +91,7 @@ const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: str
   bakim: { label: "Bakım", emoji: "⚙️", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
   deneyim: { label: "Deneyim", emoji: "💬", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300" },
   yardim: { label: "Yardım", emoji: "🤝", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  anket: { label: "Anket", emoji: "📊", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" },
 };
 
 const CATEGORIES = [
@@ -76,7 +101,17 @@ const CATEGORIES = [
   { value: "bakim", label: "Bakım", emoji: "⚙️" },
   { value: "deneyim", label: "Deneyim", emoji: "💬" },
   { value: "yardim", label: "Yardım", emoji: "🤝" },
+  { value: "anket", label: "Anket", emoji: "📊" },
 ];
+
+// Rozet bilgileri
+const BADGE_INFO: Record<string, { name: string; emoji: string }> = {
+  bronze: { name: "Bronz", emoji: "🥉" },
+  silver: { name: "Gümüş", emoji: "🥈" },
+  gold: { name: "Altın", emoji: "🥇" },
+  platinum: { name: "Platin", emoji: "💎" },
+  diamond: { name: "Elmas", emoji: "💠" },
+};
 
 export default function HomePage() {
   const router = useRouter();
@@ -101,7 +136,7 @@ export default function HomePage() {
   const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
   const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Trendler
   const [trendingBrands, setTrendingBrands] = useState<Array<{ id: number; name: string; post_count: number }>>([]);
 
@@ -116,7 +151,7 @@ export default function HomePage() {
   // URL'i güncelle
   const updateURL = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
-    
+
     Object.entries(updates).forEach(([key, value]) => {
       if (value) {
         params.set(key, value);
@@ -170,18 +205,18 @@ export default function HomePage() {
 
   async function fetchTrends() {
     if (!profile) return;
-    
+
     try {
       const cityId = profile.city?.id;
       const params = new URLSearchParams();
       if (cityId) {
         params.set("cityId", cityId.toString());
       }
-      
+
       const res = await fetch(`/api/posts/trends?${params.toString()}`, {
         credentials: "include",
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         setTrendingBrands(data.brands || []);
@@ -328,9 +363,9 @@ export default function HomePage() {
 
       if (postsRes.ok) {
         const postsData = await postsRes.json();
-        
+
         if (reset) {
-          const uniquePosts = postsData.posts.filter((post: Post, index: number, self: Post[]) => 
+          const uniquePosts = postsData.posts.filter((post: Post, index: number, self: Post[]) =>
             index === self.findIndex((p: Post) => p.id === post.id)
           );
           setPosts(uniquePosts);
@@ -361,12 +396,12 @@ export default function HomePage() {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.type === 'unread_count') {
           setUnreadNotificationCount(data.count);
         } else if (data.type === 'new_notification') {
           setUnreadNotificationCount(data.unread_count);
-          
+
           if (typeof window !== "undefined" && "Notification" in window) {
             if (Notification.permission === "granted") {
               try {
@@ -439,7 +474,7 @@ export default function HomePage() {
     }
 
     fetchModels();
-    
+
     if (prevBrandRef.current !== null && prevBrandRef.current !== selectedBrand) {
       setSelectedModel(null);
     }
@@ -475,7 +510,7 @@ export default function HomePage() {
   async function handleShare(e: React.MouseEvent, post: Post) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const url = `${window.location.origin}/post/${post.id}`;
     const text = `${post.content.slice(0, 100)}${post.content.length > 100 ? "..." : ""}`;
     const category = CATEGORY_LABELS[post.category];
@@ -561,7 +596,7 @@ export default function HomePage() {
                   </span>
                 )}
               </Link>
-              
+
               {/* Filtreler */}
               <button
                 onClick={() => setShowFilters(true)}
@@ -596,9 +631,8 @@ export default function HomePage() {
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     onClick={() => setSelectedCategory("")}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      !selectedCategory ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-                    }`}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                      }`}
                   >
                     Tümü
                   </button>
@@ -606,9 +640,8 @@ export default function HomePage() {
                     <button
                       key={cat.value}
                       onClick={() => setSelectedCategory(cat.value)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        selectedCategory === cat.value ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-                      }`}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${selectedCategory === cat.value ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                        }`}
                     >
                       <span className="mr-1">{cat.emoji}</span>
                       {cat.label}
@@ -620,7 +653,7 @@ export default function HomePage() {
               {/* Marka ve Model */}
               <div className="space-y-3">
                 <label className="text-xs font-medium text-muted-foreground">Araç</label>
-                
+
                 {/* Marka */}
                 <select
                   value={selectedBrand || ""}
@@ -675,7 +708,7 @@ export default function HomePage() {
                 Uygula
               </Button>
             </div>
-        </div>
+          </div>
         </DrawerContent>
       </Drawer>
 
@@ -742,144 +775,182 @@ export default function HomePage() {
             </div>
 
             {/* Posts */}
-        {fetching ? (
-          <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-4xl mb-3">🏘️</p>
-            <p className="text-muted-foreground">Henüz gönderi yok</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {posts.map((post, index) => {
-              const category = CATEGORY_LABELS[post.category] || {
-                label: post.category,
-                emoji: "📌",
-                color: "bg-gray-100 text-gray-800",
-              };
+            {fetching ? (
+              <div className="flex justify-center py-16">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-4xl mb-3">🏘️</p>
+                <p className="text-muted-foreground">Henüz gönderi yok</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {posts.map((post, index) => {
+                  const category = CATEGORY_LABELS[post.category] || {
+                    label: post.category,
+                    emoji: "📌",
+                    color: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
+                  };
 
-              const isLast = index === posts.length - 1;
+                  const isLast = index === posts.length - 1;
 
-              return (
-                <article
-                  key={post.id}
-                  ref={isLast ? lastPostRef : null}
-                  className="hover:bg-muted/30"
-                >
-                  <Link href={`/post/${post.id}`} className="block px-4 py-4">
-                    {/* Header */}
-                    <div className="flex items-start gap-3">
-                      {/* Avatar */}
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-                        {post.user.first_name.charAt(0)}
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="font-medium text-sm">
-                            {post.user.first_name} {post.user.last_name}
-                          </span>
-                          <span className="text-muted-foreground text-sm">·</span>
-                          <span className="text-muted-foreground text-sm">{formatDate(post.created_at)}</span>
-                        </div>
-                        
-                        {post.vehicle && (
-                          <p className="text-xs text-muted-foreground mb-2">
-                            🚗 {post.vehicle.brand} {post.vehicle.model}
-                          </p>
-                        )}
-
-                        <p className="text-sm mb-2 whitespace-pre-wrap">{post.content}</p>
-
-                        {/* Resimler */}
-                        {post.images && post.images.length > 0 && (
-                          <div className={`mb-2 grid gap-1.5 ${
-                            post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
-                          }`}>
-                            {post.images.map((img, idx) => (
-                              <img
-                                key={idx}
-                                src={img.url}
-                                alt={`Gönderi resmi ${idx + 1}`}
-                                className="w-full h-48 object-cover rounded-lg border border-border"
-                              />
-                            ))}
+                  return (
+                    <article
+                      key={post.id}
+                      ref={isLast ? lastPostRef : null}
+                      className="hover:bg-muted/30"
+                    >
+                      <Link href={`/post/${post.id}`} className="block px-4 py-4">
+                        {/* Header */}
+                        <div className="flex items-start gap-3">
+                          {/* Avatar */}
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
+                            {post.user.first_name.charAt(0)}
                           </div>
-                        )}
 
-                        {/* Category + Actions */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
-                              {category.emoji} {category.label}
-                            </span>
-                            {post.comment_count !== undefined && post.comment_count > 0 && (
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                                {post.comment_count}
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="font-medium text-sm">
+                                {post.user.first_name} {post.user.last_name}
                               </span>
+                              {/* Rozetler */}
+                              {post.user.badges?.post && BADGE_INFO[post.user.badges.post] && (
+                                <span
+                                  title={`${BADGE_INFO[post.user.badges.post].name} Gönderi Rozeti`}
+                                  className="cursor-help text-sm"
+                                >
+                                  {BADGE_INFO[post.user.badges.post].emoji}
+                                </span>
+                              )}
+                              {post.user.badges?.comment && BADGE_INFO[post.user.badges.comment] && (
+                                <span
+                                  title={`${BADGE_INFO[post.user.badges.comment].name} Yorum Rozeti`}
+                                  className="cursor-help text-sm"
+                                >
+                                  {BADGE_INFO[post.user.badges.comment].emoji}
+                                </span>
+                              )}
+                              <span className="text-muted-foreground text-sm">·</span>
+                              <span className="text-muted-foreground text-sm">{formatDate(post.created_at)}</span>
+                            </div>
+
+                            {post.location && (
+                              <p className="text-xs text-muted-foreground mb-2">
+                                📍 {post.location.city}
+                              </p>
                             )}
-                          </div>
-                          
-                          <div className="flex items-center gap-3">
-                            {/* Paylaş */}
-                            <button
-                              onClick={(e) => handleShare(e, post)}
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                              </svg>
-                            </button>
-                            
-                            {/* Sil (sadece kendi gönderileri) */}
-                            {post.user.id === profile.id && (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleDelete(post.id);
-                              }}
-                              disabled={deletingId === post.id}
-                                className="text-muted-foreground hover:text-destructive"
-                            >
-                                {deletingId === post.id ? (
-                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
+
+                            {post.vehicle && (
+                              <p className="text-xs text-muted-foreground mb-2">
+                                🚗 {post.vehicle.brand} {post.vehicle.model}
+                              </p>
+                            )}
+
+                            <p className="text-sm mb-2 whitespace-pre-wrap">{post.content}</p>
+
+                            {/* Anket */}
+                            {post.category === "anket" && post.poll && (
+                              <div onClick={(e) => e.preventDefault()}>
+                                <PollCard
+                                  postId={post.id}
+                                  poll={post.poll}
+                                  isAuthenticated={!!profile}
+                                  onVote={(updatedPoll) => {
+                                    setPosts(prev => prev.map(p =>
+                                      p.id === post.id ? { ...p, poll: updatedPoll } : p
+                                    ));
+                                  }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Resimler */}
+                            {post.images && post.images.length > 0 && (
+                              <div className={`mb-2 grid gap-1.5 ${post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                                }`}>
+                                {post.images.map((img, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={img.url}
+                                    alt={`Gönderi resmi ${idx + 1}`}
+                                    className="w-full h-48 object-cover rounded-lg border border-border"
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Category + Actions */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
+                                  {category.emoji} {category.label}
+                                </span>
+                                {post.comment_count !== undefined && post.comment_count > 0 && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    {post.comment_count}
+                                  </span>
                                 )}
-                            </button>
-                          )}
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                {/* Paylaş */}
+                                <button
+                                  onClick={(e) => handleShare(e, post)}
+                                  className="text-muted-foreground hover:text-foreground"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                  </svg>
+                                </button>
+
+                                {/* Sil (sadece kendi gönderileri) */}
+                                {post.user.id === profile?.id && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleDelete(post.id);
+                                    }}
+                                    disabled={deletingId === post.id}
+                                    className="text-muted-foreground hover:text-destructive"
+                                  >
+                                    {deletingId === post.id ? (
+                                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  </Link>
-                </article>
-              );
-            })}
+                      </Link>
+                    </article>
+                  );
+                })}
 
-            {/* Loading */}
-            {loadingMore && (
-              <div className="flex justify-center py-6">
-                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                {/* Loading */}
+                {loadingMore && (
+                  <div className="flex justify-center py-6">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+
+                {/* End */}
+                {!hasMore && posts.length > 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-6">
+                    Tüm gönderileri gördünüz
+                  </p>
+                )}
               </div>
             )}
-
-            {/* End */}
-            {!hasMore && posts.length > 0 && (
-              <p className="text-center text-sm text-muted-foreground py-6">
-                Tüm gönderileri gördünüz
-              </p>
-            )}
-          </div>
-        )}
           </div>
 
           {/* Sağ Sidebar - Boş (gelecekte başka içerik eklenebilir) */}

@@ -1,6 +1,7 @@
 import pool from '../config/database.js';
 import HttpException from '../exceptions/http-exception.js';
 import notificationManager from './notification-manager.js';
+import BadgeService from './badge-service.js';
 
 export default class CommentService {
     /**
@@ -117,6 +118,10 @@ export default class CommentService {
             }
         }
 
+        // Rozet kontrolü yap
+        const badgeService = new BadgeService();
+        const newBadges = await badgeService.checkAndAwardBadges(userId);
+
         return {
             id: comment.id,
             content: comment.content,
@@ -126,7 +131,8 @@ export default class CommentService {
                 id: commenter.id,
                 first_name: commenter.first_name,
                 last_name: commenter.last_name
-            }
+            },
+            new_badges: newBadges
         };
     }
 

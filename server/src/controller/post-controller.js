@@ -1,11 +1,13 @@
 import PostService from '../service/post-service.js';
 import UserService from '../service/user-service.js';
+import PollService from '../service/poll-service.js';
 import HttpException from '../exceptions/http-exception.js';
 
 export default class PostController {
     constructor() {
         this.postService = new PostService();
         this.userService = new UserService();
+        this.pollService = new PollService();
     }
 
     /**
@@ -63,7 +65,7 @@ export default class PostController {
                 filters.category = req.query.category;
             }
 
-            const result = await this.postService.getPosts(filters, page, limit);
+            const result = await this.postService.getPosts(filters, page, limit, req.user?.userId || null);
 
             res.status(200).json(result);
         } catch (error) {
@@ -95,12 +97,15 @@ export default class PostController {
                 throw new HttpException(400, 'Kategori zorunludur');
             }
 
-            if (!brandId) {
-                throw new HttpException(400, 'Marka seçimi zorunludur');
-            }
+            // Anket değilse marka/model zorunlu
+            if (category !== 'anket') {
+                if (!brandId) {
+                    throw new HttpException(400, 'Marka seçimi zorunludur');
+                }
 
-            if (!modelId) {
-                throw new HttpException(400, 'Model seçimi zorunludur');
+                if (!modelId) {
+                    throw new HttpException(400, 'Model seçimi zorunludur');
+                }
             }
 
             if (!content) {
@@ -119,9 +124,24 @@ export default class PostController {
                 images
             );
 
+            // Anket kategorisi ise poll oluştur
+            let poll = null;
+            if (category === 'anket' && req.body.pollOptions && req.body.pollOptions.length >= 2) {
+                try {
+                    poll = await this.pollService.createPoll(post.id, content, req.body.pollOptions);
+                } catch (pollError) {
+                    // Poll oluşturulamazsa gönderiyi sil ve hata fırlat
+                    await this.postService.deletePost(post.id, userId);
+                    throw pollError;
+                }
+            }
+
             res.status(201).json({
                 message: 'Gönderi oluşturuldu',
-                post
+                post: {
+                    ...post,
+                    poll
+                }
             });
         } catch (error) {
             next(error);
@@ -165,7 +185,7 @@ export default class PostController {
                 throw new HttpException(400, 'Gönderi ID zorunludur');
             }
 
-            const post = await this.postService.getPost(id);
+            const post = await this.postService.getPost(id, req.user?.userId || null);
 
             res.status(200).json({ post });
         } catch (error) {
@@ -187,7 +207,7 @@ export default class PostController {
             }
 
             // Önce gönderiyi al - marka ve model bilgisi için
-            const post = await this.postService.getPost(id);
+            const post = await this.postService.getPost(id, req.user?.userId || null);
 
             // Benzer gönderileri getir
             const relatedPosts = await this.postService.getRelatedPosts(id, post.brand_id, post.model_id, limit);

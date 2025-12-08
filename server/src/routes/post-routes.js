@@ -13,8 +13,8 @@ router.get('/stats', postController.getStats.bind(postController)); // Platform 
 router.post('/', authenticateToken, postController.createPost.bind(postController));
 router.delete('/:id', authenticateToken, postController.deletePost.bind(postController));
 
-// Public routes - SEO için auth gerektirmez
-router.get('/:id/related', postController.getRelatedPosts.bind(postController)); // Benzer gönderiler
-router.get('/:id', postController.getPost.bind(postController)); // Tek gönderi (en sonda - :id parametrik)
+// Public routes - SEO için auth gerektirmez ama vote durumu için optionalAuth
+router.get('/:id/related', optionalAuth, postController.getRelatedPosts.bind(postController)); // Benzer gönderiler
+router.get('/:id', optionalAuth, postController.getPost.bind(postController)); // Tek gönderi (en sonda - :id parametrik)
 
 export default router;

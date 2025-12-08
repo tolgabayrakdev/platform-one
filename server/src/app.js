@@ -12,6 +12,8 @@ import postRoutes from './routes/post-routes.js';
 import commentRoutes from './routes/comment-routes.js';
 import notificationRoutes from './routes/notification-routes.js';
 import uploadRoutes from './routes/upload-routes.js';
+import badgeRoutes from './routes/badge-routes.js';
+import pollRoutes from './routes/poll-routes.js';
 import errorHandler from './middleware/error-handler.js';
 import logger from './config/logger.js';
 import { generalLimiter } from './middleware/rate-limiter.js';
@@ -54,6 +56,8 @@ app.use('/api/posts', postRoutes);
 app.use('/api', commentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api', badgeRoutes);
+app.use('/api', pollRoutes);
 
 app.use(errorHandler);
 

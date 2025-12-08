@@ -23,6 +23,7 @@ const CATEGORIES = [
   { value: "bakim", label: "Bakım", emoji: "⚙️" },
   { value: "deneyim", label: "Deneyim", emoji: "💬" },
   { value: "yardim", label: "Yardım", emoji: "🤝" },
+  { value: "anket", label: "Anket", emoji: "📊" },
 ];
 
 interface Brand {
@@ -52,6 +53,10 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
   const [selectedModel, setSelectedModel] = useState<number | null>(null);
   const [images, setImages] = useState<ImageFile[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Anket seçenekleri
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const isPollCategory = category === "anket";
 
   // Markaları yükle
   useEffect(() => {
@@ -102,6 +107,7 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
       setContent("");
       setSelectedBrand(null);
       setSelectedModel(null);
+      setPollOptions(["", ""]);
       // Resim preview'larını temizle
       images.forEach((img) => {
         if (img.preview) {
@@ -191,14 +197,17 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
       return;
     }
 
-    if (!selectedBrand) {
-      toast.error("Lütfen marka seçin");
-      return;
-    }
+    // Anket değilse marka/model zorunlu
+    if (category !== "anket") {
+      if (!selectedBrand) {
+        toast.error("Lütfen marka seçin");
+        return;
+      }
 
-    if (!selectedModel) {
-      toast.error("Lütfen model seçin");
-      return;
+      if (!selectedModel) {
+        toast.error("Lütfen model seçin");
+        return;
+      }
     }
 
     if (!content || content.trim().length < 10) {
@@ -206,24 +215,40 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
       return;
     }
 
+    // Anket kategorisi ise seçenek kontrolü
+    if (category === "anket") {
+      const validOptions = pollOptions.filter(opt => opt.trim().length > 0);
+      if (validOptions.length < 2) {
+        toast.error("Anket için en az 2 seçenek gereklidir");
+        return;
+      }
+    }
+
     setSaving(true);
 
     try {
-      // Önce resimleri yükle
-      const uploadedImages = await uploadImages();
+      // Önce resimleri yükle (anket değilse)
+      const uploadedImages = category !== "anket" ? await uploadImages() : [];
 
-      // Sonra gönderiyi oluştur
+      // Onra gönderiyi oluştur
+      const requestBody: Record<string, unknown> = {
+        category,
+        content: content.trim(),
+        brandId: selectedBrand,
+        modelId: selectedModel,
+        images: uploadedImages
+      };
+
+      // Anket ise seçenekleri ekle
+      if (category === "anket") {
+        requestBody.pollOptions = pollOptions.filter(opt => opt.trim().length > 0);
+      }
+
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ 
-          category, 
-          content: content.trim(),
-          brandId: selectedBrand,
-          modelId: selectedModel,
-          images: uploadedImages
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
@@ -231,7 +256,7 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
         throw new Error(data.message || "Gönderi oluşturulamadı");
       }
 
-      toast.success("Gönderi paylaşıldı!");
+      toast.success(category === "anket" ? "Anket paylaşıldı!" : "Gönderi paylaşıldı!");
       onCreated();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Bir hata oluştu";
@@ -242,8 +267,8 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
   }
 
   return (
-    <Drawer 
-      open={open} 
+    <Drawer
+      open={open}
       onOpenChange={(isOpen) => !isOpen && !saving && onClose()}
       noBodyStyles
     >
@@ -253,128 +278,186 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
             <DrawerTitle className="text-base">Yeni Gönderi</DrawerTitle>
           </DrawerHeader>
 
-        {/* Form */}
+          {/* Form */}
           <form onSubmit={handleSubmit} className="px-4 pb-6 space-y-4">
-          {/* Kategori Seçimi */}
-          <div className="space-y-2">
+            {/* Kategori Seçimi */}
+            <div className="space-y-2">
               <label className="block text-xs font-medium text-muted-foreground">Kategori</label>
               <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  type="button"
-                  onClick={() => setCategory(cat.value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    category === cat.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => setCategory(cat.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${category === cat.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80"
+                      }`}
+                  >
                     <span className="mr-1">{cat.emoji}</span>
                     {cat.label}
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Marka ve Model */}
-          <div className="space-y-3">
-            <label className="block text-xs font-medium text-muted-foreground">Araç</label>
-            
-            {/* Marka */}
-            <select
-              value={selectedBrand || ""}
-              onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">Marka seçin</option>
-              {brands.map((brand) => (
-                <option key={brand.id} value={brand.id}>{brand.name}</option>
-              ))}
-            </select>
+            {/* Marka ve Model - Anket değilse */}
+            {!isPollCategory && (
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-muted-foreground">Araç</label>
 
-            {/* Model */}
-            {selectedBrand && (
-              <select
-                value={selectedModel || ""}
-                onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">Model seçin</option>
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>{model.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
+                {/* Marka */}
+                <select
+                  value={selectedBrand || ""}
+                  onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Marka seçin</option>
+                  {brands.map((brand) => (
+                    <option key={brand.id} value={brand.id}>{brand.name}</option>
+                  ))}
+                </select>
 
-          {/* Resim Yükleme */}
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-muted-foreground">
-              Resimler (En fazla 2)
-            </label>
-            
-            {/* Resim Önizlemeleri */}
-            {images.length > 0 && (
-              <div className="grid grid-cols-2 gap-2">
-                {images.map((img, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={img.preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border border-border"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                {/* Model */}
+                {selectedBrand && (
+                  <select
+                    value={selectedModel || ""}
+                    onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="">Model seçin</option>
+                    {models.map((model) => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
 
-            {/* Resim Ekleme Butonu */}
-            {images.length < 2 && (
-              <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-input rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-sm text-muted-foreground">
-                  {images.length === 0 ? "Resim Ekle" : "1 Resim Daha Ekle"}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-              </label>
+            {/* Anket Seçenekleri - Sadece anket kategorisinde */}
+            {isPollCategory && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    Seçenekler (2-5 arası)
+                  </label>
+                  <span className="text-xs text-muted-foreground">{pollOptions.filter(o => o.trim()).length}/5</span>
+                </div>
+                <div className="space-y-2">
+                  {pollOptions.map((option, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={option}
+                        onChange={(e) => {
+                          const newOptions = [...pollOptions];
+                          newOptions[index] = e.target.value;
+                          setPollOptions(newOptions);
+                        }}
+                        placeholder={`Seçenek ${index + 1}`}
+                        maxLength={200}
+                        className="flex-1 px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newOptions = pollOptions.filter((_, i) => i !== index);
+                            setPollOptions(newOptions);
+                          }}
+                          className="px-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {pollOptions.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setPollOptions([...pollOptions, ""])}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Seçenek Ekle
+                  </button>
+                )}
+              </div>
             )}
-          </div>
 
-          {/* İçerik */}
+            {/* Resim Yükleme - Anket değilse */}
+            {!isPollCategory && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Resimler (En fazla 2)
+                </label>
+
+                {/* Resim Önizlemeleri */}
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {images.map((img, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={img.preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Resim Ekleme Butonu */}
+                {images.length < 2 && (
+                  <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-input rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                    <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-sm text-muted-foreground">
+                      {images.length === 0 ? "Resim Ekle" : "1 Resim Daha Ekle"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+
+            {/* İçerik */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
                 <label className="text-xs font-medium text-muted-foreground">İçerik</label>
-                <span className={`text-xs font-medium ${
-                  content.length >= 500 
-                    ? "text-destructive" 
-                    : content.length >= 450 
-                      ? "text-yellow-600" 
-                      : "text-muted-foreground"
-                }`}>
+                <span className={`text-xs font-medium ${content.length >= 500
+                  ? "text-destructive"
+                  : content.length >= 450
+                    ? "text-yellow-600"
+                    : "text-muted-foreground"
+                  }`}>
                   {content.length}/500
                   {content.length >= 500 && " (limit)"}
-              </span>
+                </span>
               </div>
-            <textarea
-              value={content}
+              <textarea
+                value={content}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value.length <= 500) {
@@ -382,12 +465,11 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                   }
                 }}
                 placeholder="Sorunuzu, deneyiminizi veya paylaşmak istediğiniz bilgiyi yazın..."
-              rows={4}
-                className={`w-full px-3 py-2 text-sm border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 resize-none transition-colors ${
-                  content.length >= 500 
-                    ? "border-destructive focus:ring-destructive" 
-                    : "border-input focus:ring-ring"
-                }`}
+                rows={4}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 resize-none transition-colors ${content.length >= 500
+                  ? "border-destructive focus:ring-destructive"
+                  : "border-input focus:ring-ring"
+                  }`}
               />
               {content.length >= 450 && content.length < 500 && (
                 <p className="text-xs text-yellow-600">⚠️ Karakter sınırına yaklaşıyorsunuz</p>
@@ -395,9 +477,9 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
               {content.length >= 500 && (
                 <p className="text-xs text-destructive">⛔ Maksimum 500 karakter girebilirsiniz</p>
               )}
-          </div>
+            </div>
 
-          {/* Buttons */}
+            {/* Buttons */}
             <div className="flex gap-2 pt-1">
               <Button
                 type="button"
@@ -406,18 +488,25 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                 disabled={saving}
                 className="flex-1 h-10 rounded-lg text-sm"
               >
-              İptal
-            </Button>
+                İptal
+              </Button>
               <Button
                 type="submit"
-                disabled={saving || uploadingImages || !category || !selectedBrand || !selectedModel || content.trim().length < 10}
+                disabled={
+                  saving ||
+                  uploadingImages ||
+                  !category ||
+                  content.trim().length < 10 ||
+                  (category !== "anket" && (!selectedBrand || !selectedModel)) ||
+                  (category === "anket" && pollOptions.filter(o => o.trim()).length < 2)
+                }
                 className="flex-1 h-10 rounded-lg text-sm"
               >
-              {saving || uploadingImages ? "Paylaşılıyor..." : "Paylaş"}
-            </Button>
-          </div>
-        </form>
-      </div>
+                {saving || uploadingImages ? "Paylaşılıyor..." : "Paylaş"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </DrawerContent>
     </Drawer>
   );

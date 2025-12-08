@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PollCard from "@/components/poll-card";
 
 interface User {
   id: string;
@@ -17,6 +18,24 @@ interface Vehicle {
   model: string;
 }
 
+interface PollOption {
+  id: number;
+  option_text: string;
+  option_order: number;
+  vote_count: number;
+  percentage: number;
+}
+
+interface Poll {
+  id: string;
+  question: string;
+  created_at: string;
+  options: PollOption[];
+  total_votes: number;
+  user_vote: number | null;
+  has_voted: boolean;
+}
+
 interface Post {
   id: string;
   category: string;
@@ -26,7 +45,8 @@ interface Post {
   comment_count?: number;
   user: User;
   location: Location;
-  vehicle: Vehicle;
+  vehicle: Vehicle | null;
+  poll?: Poll | null;
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
@@ -36,6 +56,7 @@ const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: str
   bakim: { label: "Bakım", emoji: "⚙️", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
   deneyim: { label: "Deneyim", emoji: "💬", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300" },
   yardim: { label: "Yardım", emoji: "🤝", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  anket: { label: "Anket", emoji: "📊", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" },
 };
 
 function formatDate(dateStr: string) {
@@ -108,6 +129,17 @@ export default function PostsList({ initialPosts }: { initialPosts: Post[] }) {
                   )}
 
                   <p className="text-sm mb-2 whitespace-pre-wrap">{post.content}</p>
+
+                  {/* Anket */}
+                  {post.category === "anket" && post.poll && (
+                    <div onClick={(e) => e.preventDefault()} className="mb-2">
+                      <PollCard
+                        postId={post.id}
+                        poll={post.poll}
+                        isAuthenticated={false}
+                      />
+                    </div>
+                  )}
 
                   {/* Resimler */}
                   {post.images && post.images.length > 0 && (

@@ -1,40 +1,45 @@
 import pool from '../config/database.js';
 import HttpException from '../exceptions/http-exception.js';
+import BadgeService from './badge-service.js';
+import PollService from './poll-service.js';
 
-const VALID_CATEGORIES = ['soru', 'yedek_parca', 'servis', 'bakim', 'deneyim', 'yardim'];
+const VALID_CATEGORIES = ['soru', 'yedek_parca', 'servis', 'bakim', 'deneyim', 'yardim', 'anket'];
 
 export default class PostService {
+    constructor() {
+        this.pollService = new PollService();
+    }
+
     /**
      * Gönderileri getir (filtreli)
      * @param {Object} filters - { cityId, brandId, modelId, category }
      * @param {number} page
      * @param {number} limit
+     * @param {string|null} userId - Oy durumunu kontrol için
      */
-    async getPosts(filters = {}, page = 1, limit = 20) {
+    async getPosts(filters = {}, page = 1, limit = 20, userId = null) {
         const offset = (page - 1) * limit;
-        const { cityId, brandId, modelId, category } = filters;
-
         // Dinamik WHERE koşulları
         const conditions = [];
         const params = [];
         let paramIndex = 1;
 
-        if (modelId) {
+        if (filters.modelId) {
             conditions.push(`p.model_id = $${paramIndex++}`);
-            params.push(modelId);
-        } else if (brandId) {
+            params.push(filters.modelId);
+        } else if (filters.brandId) {
             conditions.push(`p.brand_id = $${paramIndex++}`);
-            params.push(brandId);
+            params.push(filters.brandId);
         }
 
-        if (cityId) {
+        if (filters.cityId) {
             conditions.push(`p.city_id = $${paramIndex++}`);
-            params.push(cityId);
+            params.push(filters.cityId);
         }
 
-        if (category && VALID_CATEGORIES.includes(category)) {
+        if (filters.category) {
             conditions.push(`p.category = $${paramIndex++}`);
-            params.push(category);
+            params.push(filters.category);
         }
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -52,12 +57,16 @@ export default class PostService {
         c.name as city_name,
         b.name as brand_name,
         m.name as model_name,
-        COALESCE(COUNT(cm.id), 0)::INTEGER as comment_count
+        COALESCE(COUNT(cm.id), 0)::INTEGER as comment_count,
+        (SELECT badge_level FROM user_badges WHERE user_id = u.id AND badge_type = 'comment' ORDER BY 
+          CASE badge_level WHEN 'diamond' THEN 5 WHEN 'platinum' THEN 4 WHEN 'gold' THEN 3 WHEN 'silver' THEN 2 WHEN 'bronze' THEN 1 END DESC LIMIT 1) as comment_badge,
+        (SELECT badge_level FROM user_badges WHERE user_id = u.id AND badge_type = 'post' ORDER BY 
+          CASE badge_level WHEN 'diamond' THEN 5 WHEN 'platinum' THEN 4 WHEN 'gold' THEN 3 WHEN 'silver' THEN 2 WHEN 'bronze' THEN 1 END DESC LIMIT 1) as post_badge
       FROM posts p
       JOIN users u ON p.user_id = u.id
       JOIN cities c ON p.city_id = c.id
-      JOIN brands b ON p.brand_id = b.id
-      JOIN models m ON p.model_id = m.id
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
       LEFT JOIN comments cm ON p.id = cm.post_id
       ${whereClause}
       GROUP BY p.id, u.id, u.first_name, u.last_name, c.name, b.name, m.name, p.images
@@ -69,35 +78,59 @@ export default class PostService {
         // Toplam sayı
         const countResult = await pool.query(
             `SELECT COUNT(*) FROM posts p
-       JOIN brands b ON p.brand_id = b.id
-       JOIN models m ON p.model_id = m.id
+       LEFT JOIN brands b ON p.brand_id = b.id
+       LEFT JOIN models m ON p.model_id = m.id
        ${whereClause}`,
             params
         );
 
         const total = parseInt(countResult.rows[0].count);
 
-        return {
-            posts: result.rows.map((post) => ({
-                id: post.id,
-                category: post.category,
-                content: post.content,
-                images: post.images || [],
-                created_at: post.created_at,
-                comment_count: post.comment_count || 0,
-                user: {
-                    id: post.user_id,
-                    first_name: post.first_name,
-                    last_name: post.last_name
-                },
-                location: {
-                    city: post.city_name
-                },
-                vehicle: {
-                    brand: post.brand_name,
-                    model: post.model_name
+        // Anket postları için poll verilerini çek
+        const postsWithPolls = await Promise.all(
+            result.rows.map(async (post) => {
+                const basePost = {
+                    id: post.id,
+                    category: post.category,
+                    content: post.content,
+                    images: post.images || [],
+                    created_at: post.created_at,
+                    comment_count: post.comment_count || 0,
+                    user: {
+                        id: post.user_id,
+                        first_name: post.first_name,
+                        last_name: post.last_name,
+                        badges: {
+                            comment: post.comment_badge || null,
+                            post: post.post_badge || null
+                        }
+                    },
+                    location: {
+                        city: post.city_name
+                    },
+                    vehicle: post.brand_name ? {
+                        brand: post.brand_name,
+                        model: post.model_name
+                    } : null,
+                    poll: null
+                };
+
+                // Anket kategorisi ise poll verisini çek
+                if (post.category === 'anket') {
+                    try {
+                        const pollData = await this.pollService.getPollByPostId(post.id, userId);
+                        basePost.poll = pollData;
+                    } catch {
+                        // Poll bulunamazsa null kalır
+                    }
                 }
-            })),
+
+                return basePost;
+            })
+        );
+
+        return {
+            posts: postsWithPolls,
             pagination: {
                 page,
                 limit,
@@ -140,7 +173,14 @@ export default class PostService {
             [userId, cityId, brandId, modelId, category, content.trim(), imagesJson]
         );
 
-        return result.rows[0];
+        // Rozet kontrolü yap
+        const badgeService = new BadgeService();
+        const newBadges = await badgeService.checkAndAwardBadges(userId);
+
+        return {
+            ...result.rows[0],
+            new_badges: newBadges
+        };
     }
 
     /**
@@ -223,8 +263,9 @@ export default class PostService {
 
     /**
      * Tek bir gönderiyi getir
+     * @param {string|null} userId - Oy durumunu kontrol için
      */
-    async getPost(postId) {
+    async getPost(postId, userId = null) {
         const result = await pool.query(
             `SELECT 
         p.id,
@@ -240,12 +281,16 @@ export default class PostService {
         u.last_name,
         c.name as city_name,
         b.name as brand_name,
-        m.name as model_name
+        m.name as model_name,
+        (SELECT badge_level FROM user_badges WHERE user_id = u.id AND badge_type = 'comment' ORDER BY 
+          CASE badge_level WHEN 'diamond' THEN 5 WHEN 'platinum' THEN 4 WHEN 'gold' THEN 3 WHEN 'silver' THEN 2 WHEN 'bronze' THEN 1 END DESC LIMIT 1) as comment_badge,
+        (SELECT badge_level FROM user_badges WHERE user_id = u.id AND badge_type = 'post' ORDER BY 
+          CASE badge_level WHEN 'diamond' THEN 5 WHEN 'platinum' THEN 4 WHEN 'gold' THEN 3 WHEN 'silver' THEN 2 WHEN 'bronze' THEN 1 END DESC LIMIT 1) as post_badge
       FROM posts p
       JOIN users u ON p.user_id = u.id
       JOIN cities c ON p.city_id = c.id
-      JOIN brands b ON p.brand_id = b.id
-      JOIN models m ON p.model_id = m.id
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
       WHERE p.id = $1`,
             [postId]
         );
@@ -256,7 +301,7 @@ export default class PostService {
 
         const post = result.rows[0];
 
-        return {
+        const basePost = {
             id: post.id,
             category: post.category,
             content: post.content,
@@ -268,16 +313,33 @@ export default class PostService {
             user: {
                 id: post.user_id,
                 first_name: post.first_name,
-                last_name: post.last_name
+                last_name: post.last_name,
+                badges: {
+                    comment: post.comment_badge || null,
+                    post: post.post_badge || null
+                }
             },
             location: {
                 city: post.city_name
             },
-            vehicle: {
+            vehicle: post.brand_name ? {
                 brand: post.brand_name,
                 model: post.model_name
-            }
+            } : null,
+            poll: null
         };
+
+        // Anket kategorisi ise poll verisini çek
+        if (post.category === 'anket') {
+            try {
+                const pollData = await this.pollService.getPollByPostId(post.id, userId);
+                basePost.poll = pollData;
+            } catch {
+                // Poll bulunamazsa null kalır
+            }
+        }
+
+        return basePost;
     }
 
     /**

@@ -6,6 +6,7 @@ import BackButton from "./back-button";
 import ShareButton from "./share-button";
 import CommentsSection from "./comments-section";
 import ImageGallery from "./image-gallery";
+import PollSection from "./poll-section";
 
 interface Post {
   id: string;
@@ -17,6 +18,10 @@ interface Post {
     id: string;
     first_name: string;
     last_name: string;
+    badges?: {
+      comment: string | null;
+      post: string | null;
+    };
   };
   location: {
     city: string;
@@ -24,7 +29,22 @@ interface Post {
   vehicle: {
     brand: string;
     model: string;
-  };
+  } | null;
+  poll?: {
+    id: string;
+    question: string;
+    created_at: string;
+    options: Array<{
+      id: number;
+      option_text: string;
+      option_order: number;
+      vote_count: number;
+      percentage: number;
+    }>;
+    total_votes: number;
+    user_vote: number | null;
+    has_voted: boolean;
+  } | null;
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
@@ -34,6 +54,16 @@ const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: str
   bakim: { label: "Bakım", emoji: "⚙️", color: "bg-green-100 text-green-800" },
   deneyim: { label: "Deneyim", emoji: "💬", color: "bg-pink-100 text-pink-800" },
   yardim: { label: "Yardım", emoji: "🤝", color: "bg-yellow-100 text-yellow-800" },
+  anket: { label: "Anket", emoji: "📊", color: "bg-indigo-100 text-indigo-800" },
+};
+
+// Rozet bilgileri
+const BADGE_INFO: Record<string, { name: string; emoji: string }> = {
+  bronze: { name: "Bronz", emoji: "🥉" },
+  silver: { name: "Gümüş", emoji: "🥈" },
+  gold: { name: "Altın", emoji: "🥇" },
+  platinum: { name: "Platin", emoji: "💎" },
+  diamond: { name: "Elmas", emoji: "💠" },
 };
 
 const API_URL = process.env.BACKEND_URL || "http://localhost:1234";
@@ -50,10 +80,16 @@ interface RelatedPost {
   };
 }
 
-async function getPost(id: string): Promise<Post | null> {
+async function getPost(id: string, accessToken?: string): Promise<Post | null> {
   try {
+    const headers: HeadersInit = {};
+    if (accessToken) {
+      headers['Cookie'] = `access_token=${accessToken}`;
+    }
+
     const res = await fetch(`${API_URL}/api/posts/${id}`, {
       cache: "no-store",
+      headers,
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -134,8 +170,11 @@ function formatDate(dateStr: string) {
 
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("access_token")?.value;
+
   const [post, relatedPosts, loggedIn] = await Promise.all([
-    getPost(id),
+    getPost(id, accessToken),
     getRelatedPosts(id),
     isAuthenticated()
   ]);
@@ -150,14 +189,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 h-12 flex items-center gap-3">
+        <div className="max-w-2xl mx-auto px-4 h-12 flex items-center gap-3">
           <BackButton />
           <span className="font-semibold">Gönderi</span>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-3xl mx-auto">
+      <main className="max-w-2xl mx-auto">
         <article className="px-4 py-4">
           {/* User */}
           <div className="flex items-center gap-3 mb-4">
@@ -165,8 +204,19 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               {post.user.first_name.charAt(0)}
             </div>
             <div>
-              <p className="font-medium text-sm">
+              <p className="font-medium text-sm flex items-center gap-2">
                 {post.user.first_name} {post.user.last_name}
+                {/* Rozetler */}
+                {post.user.badges?.post && BADGE_INFO[post.user.badges.post] && (
+                  <span title={`${BADGE_INFO[post.user.badges.post].name} Gönderi Rozeti`} className="cursor-help">
+                    {BADGE_INFO[post.user.badges.post].emoji}
+                  </span>
+                )}
+                {post.user.badges?.comment && BADGE_INFO[post.user.badges.comment] && (
+                  <span title={`${BADGE_INFO[post.user.badges.comment].name} Yorum Rozeti`} className="cursor-help">
+                    {BADGE_INFO[post.user.badges.comment].emoji}
+                  </span>
+                )}
               </p>
               <p className="text-xs text-muted-foreground">
                 {formatDate(post.created_at)}
@@ -176,6 +226,15 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
           {/* Content */}
           <p className="text-base whitespace-pre-wrap mb-4">{post.content}</p>
+
+          {/* Anket */}
+          {post.category === "anket" && post.poll && (
+            <PollSection
+              postId={post.id}
+              poll={post.poll}
+              isAuthenticated={loggedIn}
+            />
+          )}
 
           {/* Resimler */}
           {post.images && post.images.length > 0 && (
@@ -201,7 +260,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
           {/* Actions */}
           <div className="flex items-center gap-4 pt-3 border-t border-border">
-            <ShareButton 
+            <ShareButton
               postId={post.id}
               title={`${category.emoji} ${category.label}${post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : ""} | Garaj Muhabbet`}
               text={post.content.slice(0, 100) + (post.content.length > 100 ? "..." : "")}

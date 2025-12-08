@@ -4,6 +4,32 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import { BadgeDisplay, BadgeProgressBar } from "@/components/badges";
+
+interface Badge {
+  level: string;
+  name: string;
+  emoji: string;
+  color: string;
+  earned_at?: string;
+}
+
+interface BadgeProgress {
+  level: string;
+  name: string;
+  emoji: string;
+  threshold: number;
+  current: number;
+  remaining: number;
+  progress: number;
+}
+
+interface BadgeData {
+  stats: { commentCount: number; postCount: number };
+  badges: { comment: Badge[]; post: Badge[] };
+  highest: { comment: Badge | null; post: Badge | null };
+  next: { comment: BadgeProgress | null; post: BadgeProgress | null };
+}
 
 interface Profile {
   id: string;
@@ -29,6 +55,7 @@ export default function ProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | null>(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
+  const [badgeData, setBadgeData] = useState<BadgeData | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -36,8 +63,23 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetchProfile();
+    fetchBadges();
     checkNotificationPermission();
   }, []);
+
+  async function fetchBadges() {
+    try {
+      const res = await fetch("/api/users/badges", {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBadgeData(data);
+      }
+    } catch {
+      // Hata yok say
+    }
+  }
 
   function checkNotificationPermission() {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -64,7 +106,7 @@ export default function ProfilePage() {
 
       if (permission === "granted") {
         toast.success("Bildirim izni verildi! Artık bildirimler alacaksınız.");
-        
+
         // Test bildirimi göster
         if (navigator.serviceWorker) {
           // Service Worker ile push notification için hazırlık
@@ -161,6 +203,44 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* Rozetler */}
+        {badgeData && (
+          <div className="mb-8">
+            <p className="text-xs text-muted-foreground mb-3">Rozetlerim</p>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Yorum Rozetleri */}
+              <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">💬</span>
+                  <div>
+                    <p className="text-xs font-medium">Yorum</p>
+                    <p className="text-[10px] text-muted-foreground">{badgeData.stats.commentCount} yorum</p>
+                  </div>
+                </div>
+                <BadgeDisplay type="comment" badges={badgeData.badges.comment} />
+                <div className="mt-3 pt-3 border-t border-border">
+                  <BadgeProgressBar type="comment" progress={badgeData.next?.comment || null} />
+                </div>
+              </div>
+
+              {/* Gönderi Rozetleri */}
+              <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">📝</span>
+                  <div>
+                    <p className="text-xs font-medium">Gönderi</p>
+                    <p className="text-[10px] text-muted-foreground">{badgeData.stats.postCount} gönderi</p>
+                  </div>
+                </div>
+                <BadgeDisplay type="post" badges={badgeData.badges.post} />
+                <div className="mt-3 pt-3 border-t border-border">
+                  <BadgeProgressBar type="post" progress={badgeData.next?.post || null} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Info */}
         <div className="space-y-4 mb-8">
           <div className="p-4 bg-muted/30 rounded-lg">
@@ -211,24 +291,23 @@ export default function ProfilePage() {
               {notificationPermission === "granted"
                 ? "Bildirim izni verildi. Yeni bildirimler tarayıcınızdan gösterilecek."
                 : notificationPermission === "denied"
-                ? "Bildirim izni reddedilmiş. Tarayıcı ayarlarından manuel olarak açabilirsiniz."
-                : "Yeni bildirimler için tarayıcı bildirim izni verin."}
+                  ? "Bildirim izni reddedilmiş. Tarayıcı ayarlarından manuel olarak açabilirsiniz."
+                  : "Yeni bildirimler için tarayıcı bildirim izni verin."}
             </p>
             {notificationPermission !== "granted" && (
               <button
                 onClick={requestNotificationPermission}
                 disabled={requestingPermission || notificationPermission === "denied"}
-                className={`w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  notificationPermission === "denied"
-                    ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
-                }`}
+                className={`w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${notificationPermission === "denied"
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  }`}
               >
                 {requestingPermission
                   ? "İzin isteniyor..."
                   : notificationPermission === "denied"
-                  ? "İzin Reddedildi (Ayarlardan Açın)"
-                  : "Bildirim İzni Ver"}
+                    ? "İzin Reddedildi (Ayarlardan Açın)"
+                    : "Bildirim İzni Ver"}
               </button>
             )}
           </div>
@@ -241,11 +320,10 @@ export default function ProfilePage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setTheme("light")}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors ${
-                  theme === "light"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted/30 border-border hover:bg-muted/50"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors ${theme === "light"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted/30 border-border hover:bg-muted/50"
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -254,11 +332,10 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setTheme("dark")}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors ${
-                  theme === "dark"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted/30 border-border hover:bg-muted/50"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors ${theme === "dark"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted/30 border-border hover:bg-muted/50"
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -267,11 +344,10 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setTheme("system")}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors ${
-                  theme === "system"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted/30 border-border hover:bg-muted/50"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors ${theme === "system"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted/30 border-border hover:bg-muted/50"
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
