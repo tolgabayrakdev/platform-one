@@ -156,7 +156,7 @@ function CommentItem({
         </div>
       </div>
 
-      {/* Reply'ler - Düz alt alta (Facebook gibi) */}
+      {/* Reply'ler - Düz alt alta */}
       {visibleReplies.length > 0 && (
         <div className="ml-11 space-y-2">
           {visibleReplies.map((reply) => (
