@@ -418,25 +418,6 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
       {/* Content */}
       <main className="max-w-2xl mx-auto">
-        {/* Breadcrumbs */}
-        <nav className="px-4 py-2 text-sm text-muted-foreground" aria-label="Breadcrumb">
-          <ol className="flex items-center gap-2">
-            <li>
-              <Link href="/" className="hover:text-foreground transition-colors">
-                Ana Sayfa
-              </Link>
-            </li>
-            <li>/</li>
-            <li>
-              <Link href="/feed" className="hover:text-foreground transition-colors">
-                Gönderiler
-              </Link>
-            </li>
-            <li>/</li>
-            <li className="text-foreground">{category.label}</li>
-          </ol>
-        </nav>
-
         <article className="px-4 py-4" itemScope itemType="https://schema.org/Article">
           {/* Hidden h1 for SEO */}
           <h1 className="sr-only">
