@@ -6,7 +6,10 @@ import LandingHero from "@/components/landing-hero";
 import LandingStats from "@/components/landing-stats";
 import LandingTrends from "@/components/landing-trends";
 
+const baseUrl = process.env.NEXT_PUBLIC_URL || "https://garajmuhabbet.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "Garaj Muhabbet - Araç Sahipleri Topluluğu | Türkiye'nin 81 İlinden Araç Forumu",
   description: "Türkiye'nin 81 ilinden araç sahiplerinin bir araya geldiği topluluk platformu. Araçlarınız hakkında sorular sorun, deneyimlerinizi paylaşın, yardımlaşın. Yedek parça, servis, bakım ve araç konularında bilgi alışverişi yapın.",
   keywords: [
@@ -21,18 +24,52 @@ export const metadata: Metadata = {
     "81 il araç platformu",
     "araç muhabbet",
     "garaj muhabbet",
-    "araç danışma platformu"
+    "araç danışma platformu",
+    "araç topluluk",
+    "otomobil forumu",
+    "araç deneyim",
+    "araç tavsiye"
   ],
+  authors: [{ name: "Garaj Muhabbet" }],
+  creator: "Garaj Muhabbet",
+  publisher: "Garaj Muhabbet",
+  alternates: {
+    canonical: baseUrl,
+  },
   openGraph: {
     title: "Garaj Muhabbet - Araç Sahipleri Topluluğu",
     description: "Türkiye'nin 81 ilinden araç sahiplerinin bir araya geldiği topluluk. Araçlarınız hakkında sorular sorun, deneyimlerinizi paylaşın, yardımlaşın.",
     type: "website",
+    url: baseUrl,
+    siteName: "Garaj Muhabbet",
+    locale: "tr_TR",
+    images: [
+      {
+        url: `${baseUrl}/og-image.jpg`,
+        width: 1200,
+        height: 630,
+        alt: "Garaj Muhabbet - Araç Sahipleri Topluluğu",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Garaj Muhabbet - Araç Sahipleri Topluluğu",
     description: "Türkiye'nin en büyük araç sahipleri topluluğu. Ücretsiz kayıt ol ve topluluğa katıl!",
+    images: [`${baseUrl}/og-image.jpg`],
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  category: "Automotive Community",
 };
 
 const API_URL = process.env.BACKEND_URL || "http://localhost:1234";
@@ -91,8 +128,72 @@ export default async function Home() {
     getTrends(),
   ]);
 
+  // Structured Data (JSON-LD) - Organization ve WebSite
+  const organizationStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Garaj Muhabbet",
+    "url": baseUrl,
+    "logo": `${baseUrl}/og-image.jpg`,
+    "description": "Türkiye'nin 81 ilinden araç sahiplerinin bir araya geldiği topluluk platformu",
+    "sameAs": [],
+  };
+
+  const websiteStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Garaj Muhabbet",
+    "url": baseUrl,
+    "description": "Araç sahipleri topluluğu - Sorular, deneyimler, tavsiyeler",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": `${baseUrl}/feed?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
+  const collectionPageStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "En Son Gönderiler",
+    "description": "Araç sahipleri topluluğundan en son gönderiler",
+    "url": baseUrl,
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": posts.length,
+      "itemListElement": posts.slice(0, 10).map((post: any, index: number) => ({
+        "@type": "ListItem",
+        "position": index + 1,
+        "item": {
+          "@type": "Article",
+          "@id": `${baseUrl}/post/${post.id}`,
+          "headline": post.content.slice(0, 100),
+          "url": `${baseUrl}/post/${post.id}`,
+        },
+      })),
+    },
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationStructuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteStructuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionPageStructuredData) }}
+      />
+      
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4">
@@ -212,5 +313,6 @@ export default async function Home() {
         </div>
       </footer>
     </div>
+    </>
   );
 }

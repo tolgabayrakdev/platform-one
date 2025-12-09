@@ -67,6 +67,7 @@ const BADGE_INFO: Record<string, { name: string; emoji: string }> = {
 };
 
 const API_URL = process.env.BACKEND_URL || "http://localhost:1234";
+const baseUrl = process.env.NEXT_PUBLIC_URL || "https://garajmuhabbet.com";
 
 interface RelatedPost {
   id: string;
@@ -117,6 +118,101 @@ async function isAuthenticated(): Promise<boolean> {
   return !!cookieStore.get("access_token")?.value;
 }
 
+// SEO için optimize edilmiş başlık oluştur
+function generateSEOTitle(post: Post): string {
+  const category = CATEGORY_LABELS[post.category] || { label: post.category, emoji: "📌" };
+  const parts: string[] = [];
+
+  // Kategori
+  parts.push(category.label);
+
+  // Araç bilgisi (varsa)
+  if (post.vehicle) {
+    parts.push(`${post.vehicle.brand} ${post.vehicle.model}`);
+  }
+
+  // Şehir (varsa)
+  if (post.location?.city) {
+    parts.push(post.location.city);
+  }
+
+  // Ana başlık oluştur
+  const mainTitle = parts.join(" - ");
+  const title = `${mainTitle} | Garaj Muhabbet`;
+
+  // Maksimum 60 karakter (SEO best practice)
+  return title.length > 60 ? `${mainTitle.slice(0, 55)}... | Garaj Muhabbet` : title;
+}
+
+// SEO için optimize edilmiş açıklama oluştur
+function generateSEODescription(post: Post): string {
+  const parts: string[] = [];
+  
+  // İçerikten ilk 120 karakter
+  const contentPreview = post.content
+    .replace(/\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+
+  parts.push(contentPreview);
+
+  // Araç bilgisi ekle
+  if (post.vehicle) {
+    parts.push(`${post.vehicle.brand} ${post.vehicle.model} hakkında`);
+  }
+
+  // Şehir bilgisi ekle
+  if (post.location?.city) {
+    parts.push(`${post.location.city} şehrinden`);
+  }
+
+  // Kategori bilgisi ekle
+  const category = CATEGORY_LABELS[post.category];
+  if (category) {
+    parts.push(`${category.label.toLowerCase()} gönderisi`);
+  }
+
+  const description = parts.join(" - ");
+
+  // Maksimum 160 karakter (meta description best practice)
+  return description.length > 160 ? description.slice(0, 157) + "..." : description;
+}
+
+// SEO anahtar kelimeleri oluştur
+function generateKeywords(post: Post): string[] {
+  const keywords: string[] = [];
+  
+  // Kategori
+  const category = CATEGORY_LABELS[post.category];
+  if (category) {
+    keywords.push(category.label.toLowerCase());
+    keywords.push(`${category.label.toLowerCase()} araç`);
+  }
+
+  // Araç bilgisi
+  if (post.vehicle) {
+    keywords.push(post.vehicle.brand.toLowerCase());
+    keywords.push(post.vehicle.model.toLowerCase());
+    keywords.push(`${post.vehicle.brand} ${post.vehicle.model}`);
+    keywords.push(`${post.vehicle.brand} ${post.vehicle.model} ${category?.label.toLowerCase() || ""}`);
+  }
+
+  // Şehir
+  if (post.location?.city) {
+    keywords.push(post.location.city.toLowerCase());
+    keywords.push(`${post.location.city} araç`);
+    if (post.vehicle) {
+      keywords.push(`${post.location.city} ${post.vehicle.brand} ${post.vehicle.model}`);
+    }
+  }
+
+  // Genel anahtar kelimeler
+  keywords.push("araç forumu", "araç topluluğu", "garaj muhabbet", "araç soru cevap");
+
+  return [...new Set(keywords)]; // Duplicate'leri kaldır
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const post = await getPost(id);
@@ -125,25 +221,67 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     return { title: "Gönderi Bulunamadı | Garaj Muhabbet" };
   }
 
+  const title = generateSEOTitle(post);
+  const description = generateSEODescription(post);
+  const keywords = generateKeywords(post);
+  const url = `${baseUrl}/post/${id}`;
+  
+  // Open Graph görseli - post'ta resim varsa ilk resmi kullan, yoksa default
+  const ogImage = post.images && post.images.length > 0 
+    ? post.images[0].url 
+    : `${baseUrl}/og-image.jpg`;
+
   const category = CATEGORY_LABELS[post.category] || { label: post.category, emoji: "📌" };
-  const vehicle = post.vehicle ? `${post.vehicle.brand} ${post.vehicle.model}` : "";
-  const title = `${category.emoji} ${category.label}${vehicle ? ` - ${vehicle}` : ""} | Garaj Muhabbet`;
-  const description = post.content.slice(0, 160);
 
   return {
     title,
     description,
+    keywords,
+    authors: [{ name: `${post.user.first_name} ${post.user.last_name}` }],
+    creator: `${post.user.first_name} ${post.user.last_name}`,
+    publisher: "Garaj Muhabbet",
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
       title,
       description,
       type: "article",
+      url,
+      siteName: "Garaj Muhabbet",
+      locale: "tr_TR",
       publishedTime: post.created_at,
+      modifiedTime: post.created_at,
       authors: [`${post.user.first_name} ${post.user.last_name}`],
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: post.vehicle 
+            ? `${post.vehicle.brand} ${post.vehicle.model} - ${category.label}` 
+            : `${category.label} - Garaj Muhabbet`,
+        },
+      ],
+      section: category.label,
+      tags: keywords,
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
+      images: [ogImage],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
   };
 }
@@ -185,8 +323,91 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
   const category = CATEGORY_LABELS[post.category] || { label: post.category, emoji: "📌", color: "bg-gray-100 text-gray-800" };
 
+  // Structured Data (JSON-LD) için veri hazırla
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": post.category === "soru" ? "QAPage" : "Article",
+    "headline": generateSEOTitle(post).replace(" | Garaj Muhabbet", ""),
+    "description": generateSEODescription(post),
+    "image": post.images && post.images.length > 0 
+      ? post.images.map(img => img.url)
+      : [`${baseUrl}/og-image.jpg`],
+    "datePublished": post.created_at,
+    "dateModified": post.created_at,
+    "author": {
+      "@type": "Person",
+      "name": `${post.user.first_name} ${post.user.last_name}`,
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Garaj Muhabbet",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${baseUrl}/og-image.jpg`,
+      },
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `${baseUrl}/post/${post.id}`,
+    },
+    ...(post.vehicle && {
+      "about": {
+        "@type": "Product",
+        "name": `${post.vehicle.brand} ${post.vehicle.model}`,
+        "brand": {
+          "@type": "Brand",
+          "name": post.vehicle.brand,
+        },
+        "model": post.vehicle.model,
+      },
+    }),
+    ...(post.location?.city && {
+      "contentLocation": {
+        "@type": "City",
+        "name": post.location.city,
+      },
+    }),
+  };
+
+  // Breadcrumbs structured data
+  const breadcrumbStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Ana Sayfa",
+        "item": baseUrl,
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Gönderiler",
+        "item": `${baseUrl}/feed`,
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": category.label,
+        "item": `${baseUrl}/post/${post.id}`,
+      },
+    ],
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
+      />
+      
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-2xl mx-auto px-4 h-12 flex items-center gap-3">
@@ -197,15 +418,41 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
       {/* Content */}
       <main className="max-w-2xl mx-auto">
-        <article className="px-4 py-4">
+        {/* Breadcrumbs */}
+        <nav className="px-4 py-2 text-sm text-muted-foreground" aria-label="Breadcrumb">
+          <ol className="flex items-center gap-2">
+            <li>
+              <Link href="/" className="hover:text-foreground transition-colors">
+                Ana Sayfa
+              </Link>
+            </li>
+            <li>/</li>
+            <li>
+              <Link href="/feed" className="hover:text-foreground transition-colors">
+                Gönderiler
+              </Link>
+            </li>
+            <li>/</li>
+            <li className="text-foreground">{category.label}</li>
+          </ol>
+        </nav>
+
+        <article className="px-4 py-4" itemScope itemType="https://schema.org/Article">
+          {/* Hidden h1 for SEO */}
+          <h1 className="sr-only">
+            {post.vehicle 
+              ? `${category.label} - ${post.vehicle.brand} ${post.vehicle.model} - ${post.location.city}` 
+              : `${category.label} - ${post.location.city}`}
+          </h1>
+          
           {/* User */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4" itemProp="author" itemScope itemType="https://schema.org/Person">
             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
               {post.user.first_name.charAt(0)}
             </div>
             <div>
               <p className="font-medium text-sm flex items-center gap-2">
-                {post.user.first_name} {post.user.last_name}
+                <span itemProp="name">{post.user.first_name} {post.user.last_name}</span>
                 {/* Rozetler */}
                 {post.user.badges?.post && BADGE_INFO[post.user.badges.post] && (
                   <span title={`${BADGE_INFO[post.user.badges.post].name} Gönderi Rozeti`} className="cursor-help">
@@ -225,7 +472,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {/* Content */}
-          <p className="text-base whitespace-pre-wrap mb-4">{post.content}</p>
+          <div itemProp="articleBody" className="mb-4">
+            <p className="text-base whitespace-pre-wrap">{post.content}</p>
+          </div>
 
           {/* Anket */}
           {post.category === "anket" && post.poll && (
@@ -244,18 +493,25 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
           {/* Meta */}
           <div className="flex flex-col gap-2 text-sm text-muted-foreground mb-4">
             <div className="flex items-center gap-3">
-              <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
+              <span className={`text-xs px-2 py-0.5 rounded ${category.color}`} itemProp="articleSection">
                 {category.emoji} {category.label}
               </span>
+              <time itemProp="datePublished" dateTime={post.created_at} className="text-xs">
+                {formatDate(post.created_at)}
+              </time>
             </div>
             {post.vehicle && (
-              <div className="flex items-center gap-2">
-                <span>🚗 {post.vehicle.brand} {post.vehicle.model}</span>
+              <div className="flex items-center gap-2" itemProp="about" itemScope itemType="https://schema.org/Product">
+                <span>🚗 <span itemProp="name">{post.vehicle.brand} {post.vehicle.model}</span></span>
+                <meta itemProp="brand" content={post.vehicle.brand} />
+                <meta itemProp="model" content={post.vehicle.model} />
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <span>📍 {post.location.city}</span>
-            </div>
+            {post.location?.city && (
+              <div className="flex items-center gap-2" itemProp="contentLocation" itemScope itemType="https://schema.org/City">
+                <span>📍 <span itemProp="name">{post.location.city}</span></span>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -328,5 +584,6 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         )}
       </main>
     </div>
+    </>
   );
 }

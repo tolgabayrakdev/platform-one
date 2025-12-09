@@ -498,7 +498,7 @@ export default function ProfilePage() {
                     <Button
                       size="sm"
                       onClick={handleSaveVehicle}
-                      disabled={savingVehicle || (!selectedBrand && selectedBrand !== "other")}
+                      disabled={savingVehicle || !selectedBrand}
                       className="flex-1"
                     >
                       {savingVehicle ? "Kaydediliyor..." : "Kaydet"}
