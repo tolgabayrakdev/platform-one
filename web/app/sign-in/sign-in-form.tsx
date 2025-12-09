@@ -30,7 +30,7 @@ export function SignInForm() {
 
         if (response.ok) {
           // Kullanıcı zaten giriş yapmış, feed'e yönlendir
-          window.location.href = '/feed';
+          window.location.href = '/home';
           return;
         }
       } catch {
@@ -91,7 +91,7 @@ export function SignInForm() {
         return;
       }
 
-      window.location.href = '/feed';
+      window.location.href = '/home';
     } catch (error: any) {
       toast.error(error.message || "Giriş başarısız. Lütfen tekrar deneyin.");
     } finally {
@@ -149,7 +149,7 @@ export function SignInForm() {
 
       toast.success("E-posta doğrulandı! Giriş başarılı.");
       // Explore sayfasına yönlendir
-      window.location.href = '/feed';
+      window.location.href = '/home';
     } catch (error: any) {
       toast.error(error.message || "Doğrulama kodu hatalı!");
     } finally {
@@ -219,7 +219,7 @@ export function SignInForm() {
       }
 
       toast.success("Telefon doğrulandı! Giriş başarılı.");
-      window.location.href = '/feed';
+      window.location.href = '/home';
     } catch (error: any) {
       toast.error(error.message || "Doğrulama kodu hatalı!");
     } finally {
