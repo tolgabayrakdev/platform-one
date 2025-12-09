@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { BadgeDisplay, BadgeProgressBar } from "@/components/badges";
+import { Button } from "@/components/ui/button";
 
 interface Badge {
   level: string;
@@ -43,7 +44,7 @@ interface Profile {
   } | null;
   vehicle: {
     brand: { id: number; name: string };
-    model: { id: number; name: string };
+    model: { id: number; name: string } | null;
   } | null;
 }
 
@@ -56,6 +57,16 @@ export default function ProfilePage() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | null>(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
   const [badgeData, setBadgeData] = useState<BadgeData | null>(null);
+  const [cities, setCities] = useState<Array<{ id: number; name: string }>>([]);
+  const [brands, setBrands] = useState<Array<{ id: number; name: string }>>([]);
+  const [models, setModels] = useState<Array<{ id: number; name: string }>>([]);
+  const [selectedCity, setSelectedCity] = useState<number | "">("");
+  const [selectedBrand, setSelectedBrand] = useState<number | "other" | "">("");
+  const [selectedModel, setSelectedModel] = useState<number | "other" | "">("");
+  const [savingCity, setSavingCity] = useState(false);
+  const [savingVehicle, setSavingVehicle] = useState(false);
+  const [cityEditMode, setCityEditMode] = useState(false);
+  const [vehicleEditMode, setVehicleEditMode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -65,7 +76,39 @@ export default function ProfilePage() {
     fetchProfile();
     fetchBadges();
     checkNotificationPermission();
+    fetchCities();
+    fetchBrands();
   }, []);
+
+  // Marka değiştiğinde modelleri getir
+  useEffect(() => {
+    async function fetchModels(brandId: number) {
+      try {
+        const res = await fetch(`/api/locations/models/${brandId}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setModels(data.models);
+        } else {
+          setModels([]);
+        }
+      } catch {
+        setModels([]);
+      }
+    }
+
+    if (selectedBrand && selectedBrand !== "other") {
+      fetchModels(selectedBrand);
+      setSelectedModel("");
+    } else {
+      setModels([]);
+      // Eğer marka listede yok seçildiyse model de listede yok olabilir
+      if (selectedBrand === "other") {
+        setSelectedModel("other");
+      } else {
+        setSelectedModel("");
+      }
+    }
+  }, [selectedBrand]);
 
   async function fetchBadges() {
     try {
@@ -143,10 +186,110 @@ export default function ProfilePage() {
 
       const data = await res.json();
       setProfile(data.profile);
+      if (data.profile?.city?.id) {
+        setSelectedCity(data.profile.city.id);
+      }
+      if (data.profile?.vehicle?.brand?.id) {
+        setSelectedBrand(data.profile.vehicle.brand.id);
+      }
+      if (data.profile?.vehicle?.model?.id) {
+        setSelectedModel(data.profile.vehicle.model.id);
+      }
     } catch {
       toast.error("Profil yüklenemedi");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchCities() {
+    try {
+      const res = await fetch("/api/locations/cities");
+      if (res.ok) {
+        const data = await res.json();
+        setCities(data.cities || []);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function fetchBrands() {
+    try {
+      const res = await fetch("/api/locations/brands");
+      if (res.ok) {
+        const data = await res.json();
+        setBrands(data.brands || []);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleSaveCity() {
+    if (!selectedCity) {
+      toast.error("Lütfen şehir seçin");
+      return;
+    }
+    setSavingCity(true);
+    try {
+      const res = await fetch("/api/users/city", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cityId: selectedCity }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "İl güncellenemedi");
+      }
+      toast.success("İl güncellendi");
+      fetchProfile();
+      setCityEditMode(false);
+    } catch (error: any) {
+      toast.error(error.message || "İl güncellenemedi");
+    } finally {
+      setSavingCity(false);
+    }
+  }
+
+  async function handleSaveVehicle() {
+    const brandPayload = selectedBrand && selectedBrand !== "other" ? selectedBrand : null;
+    const modelPayload =
+      selectedModel && selectedModel !== "other" ? selectedModel : null;
+
+    if (!brandPayload && selectedBrand !== "other") {
+      toast.error("Lütfen marka seçin veya 'Listede yok' seçeneğini kullanın");
+      return;
+    }
+
+    if (brandPayload && !modelPayload && selectedModel !== "other") {
+      toast.error("Lütfen model seçin veya 'Model listede yok' seçeneğini kullanın");
+      return;
+    }
+
+    setSavingVehicle(true);
+    try {
+      const res = await fetch("/api/users/vehicle", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          brandId: brandPayload,
+          modelId: modelPayload,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Araç bilgisi güncellenemedi");
+      }
+      toast.success("Araç bilgisi güncellendi");
+      fetchProfile();
+      setVehicleEditMode(false);
+    } catch (error: any) {
+      toast.error(error.message || "Araç bilgisi güncellenemedi");
+    } finally {
+      setSavingVehicle(false);
     }
   }
 
@@ -251,21 +394,134 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground mb-1">Telefon</p>
             <p className="text-sm">{profile?.phone || "Belirtilmemiş"}</p>
           </div>
-          <div className="p-4 bg-muted/30 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">İl</p>
-            <p className="text-sm">
-              {profile?.city
-                ? profile.city.name
-                : "Seçilmedi"}
-            </p>
+          <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">İl</p>
+                <p className="text-sm">
+                  {profile?.city ? profile.city.name : "Seçilmedi"}
+                </p>
+              </div>
+              {!cityEditMode ? (
+                <Button size="sm" variant="outline" onClick={() => setCityEditMode(true)}>
+                  Düzenle
+                </Button>
+              ) : (
+                <div className="flex gap-2 items-center">
+                  <select
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(Number(e.target.value))}
+                    className="text-sm border border-input rounded-md px-2 py-1 bg-background"
+                  >
+                    <option value="">Şehir seç</option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button size="sm" onClick={handleSaveCity} disabled={savingCity || !selectedCity}>
+                    {savingCity ? "Kaydediliyor..." : "Kaydet"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      if (profile?.city?.id) {
+                        setSelectedCity(profile.city.id);
+                      } else {
+                        setSelectedCity("");
+                      }
+                      setCityEditMode(false);
+                    }}
+                  >
+                    İptal
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="p-4 bg-muted/30 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">Araç</p>
-            <p className="text-sm">
-              {profile?.vehicle
-                ? `${profile.vehicle.brand.name} ${profile.vehicle.model.name}`
-                : "Seçilmedi"}
-            </p>
+          <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Araç</p>
+                <p className="text-sm">
+                  {profile?.vehicle
+                    ? `${profile.vehicle.brand.name}${profile.vehicle.model ? ` ${profile.vehicle.model.name}` : ""}`
+                    : "Seçilmedi"}
+                </p>
+              </div>
+              {!vehicleEditMode ? (
+                <Button size="sm" variant="outline" onClick={() => setVehicleEditMode(true)}>
+                  Düzenle
+                </Button>
+              ) : (
+                <div className="flex flex-col gap-2 items-end w-full max-w-xs">
+                  <select
+                    value={selectedBrand}
+                    onChange={(e) => setSelectedBrand(e.target.value === "other" ? "other" : Number(e.target.value))}
+                    className="text-sm border border-input rounded-md px-2 py-1 bg-background w-full"
+                  >
+                    <option value="">Marka seç</option>
+                    {brands.map((brand) => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </option>
+                    ))}
+                    <option value="other">Markam listede yok</option>
+                  </select>
+
+                  {selectedBrand && selectedBrand !== "other" && (
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value === "other" ? "other" : Number(e.target.value))}
+                      className="text-sm border border-input rounded-md px-2 py-1 bg-background w-full"
+                    >
+                      <option value="">Model seç</option>
+                      {models.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))}
+                      <option value="other">Modelim listede yok</option>
+                    </select>
+                  )}
+
+                  {selectedBrand === "other" && (
+                    <p className="text-xs text-muted-foreground text-right">
+                      Marka listede yok seçildi (model belirtmek zorunda değilsiniz)
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveVehicle}
+                      disabled={savingVehicle || (!selectedBrand && selectedBrand !== "other")}
+                      className="flex-1"
+                    >
+                      {savingVehicle ? "Kaydediliyor..." : "Kaydet"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        if (profile?.vehicle?.brand?.id) {
+                          setSelectedBrand(profile.vehicle.brand.id);
+                          setSelectedModel(profile.vehicle.model?.id || "");
+                        } else {
+                          setSelectedBrand("");
+                          setSelectedModel("");
+                        }
+                        setVehicleEditMode(false);
+                      }}
+                    >
+                      İptal
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

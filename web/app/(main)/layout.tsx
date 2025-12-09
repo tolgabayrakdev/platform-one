@@ -42,7 +42,7 @@ export default function MainLayout({
           return; // Auth yoksa kontrol yapma
         }
 
-        // Profile kontrolü - city ve vehicle seçilmiş mi?
+          // Profile kontrolü - city seçilmiş mi?
         const profileRes = await fetch("/api/users/profile", {
           credentials: "include",
         });
@@ -50,11 +50,8 @@ export default function MainLayout({
         if (profileRes.ok) {
           const profileData = await profileRes.json();
 
-          // Eğer city veya vehicle yoksa ve onboarding sayfasında değilsek yönlendir
-          if (
-            (!profileData.profile?.city || !profileData.profile?.vehicle) &&
-            pathname !== "/onboarding"
-          ) {
+            // Eğer city yoksa ve onboarding sayfasında değilsek yönlendir
+            if (!profileData.profile?.city && pathname !== "/onboarding") {
             router.push("/onboarding");
           }
         }

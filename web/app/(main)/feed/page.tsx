@@ -297,7 +297,7 @@ export default function FeedPage() {
         const profileData = await profileRes.json();
 
         if (profileData.profile) {
-          const needsOnboarding = !profileData.profile.city || !profileData.profile.vehicle;
+          const needsOnboarding = !profileData.profile.city;
 
           if (needsOnboarding) {
             router.replace("/onboarding");

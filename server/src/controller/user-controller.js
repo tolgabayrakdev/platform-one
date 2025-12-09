@@ -47,14 +47,6 @@ export default class UserController {
                 throw new HttpException(401, 'Yetkilendirme gerekli');
             }
 
-            if (!brandId) {
-                throw new HttpException(400, 'Marka ID zorunludur');
-            }
-
-            if (!modelId) {
-                throw new HttpException(400, 'Model ID zorunludur');
-            }
-
             const user = await this.userService.updateVehicle(userId, brandId, modelId);
 
             res.status(200).json({

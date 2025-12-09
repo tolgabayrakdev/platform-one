@@ -34,8 +34,8 @@ export default function OnboardingPage() {
   const [models, setModels] = useState<Model[]>([]);
 
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
-  const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
-  const [selectedModel, setSelectedModel] = useState<number | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<number | "other" | null>(null);
+  const [selectedModel, setSelectedModel] = useState<number | "other" | null>(null);
   const [acceptedRules, setAcceptedRules] = useState(false);
 
   // Window size'ı al (confetti için)
@@ -84,8 +84,8 @@ export default function OnboardingPage() {
 
         if (profileRes.ok) {
           const data = await profileRes.json();
-          if (data.profile?.city && data.profile?.vehicle) {
-            // İl ve araç zaten seçili, feed'e yönlendir
+          if (data.profile?.city) {
+            // İl seçiliyse onboarding tamamlandı kabul et
             window.location.href = "/feed";
             return;
           }
@@ -116,9 +116,9 @@ export default function OnboardingPage() {
 
   // Marka değiştiğinde modelleri getir
   useEffect(() => {
-    if (!selectedBrand) {
+    if (!selectedBrand || selectedBrand === "other") {
       setModels([]);
-      setSelectedModel(null);
+      setSelectedModel(selectedBrand === "other" ? "other" : null);
       return;
     }
 
@@ -145,13 +145,13 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (!selectedBrand) {
-      toast.error("Lütfen marka seçin");
+    if (selectedBrand === null) {
+      toast.error("Lütfen marka seçin (listede yok ise ilgili seçeneği kullanın)");
       return;
     }
 
-    if (!selectedModel) {
-      toast.error("Lütfen model seçin");
+    if (selectedBrand !== "other" && selectedModel === null) {
+      toast.error("Lütfen model seçin veya 'Model listede yok' seçeneğini kullanın");
       return;
     }
 
@@ -181,7 +181,10 @@ export default function OnboardingPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ brandId: selectedBrand, modelId: selectedModel }),
+        body: JSON.stringify({
+          brandId: selectedBrand === "other" ? null : selectedBrand,
+          modelId: selectedModel === "other" ? null : selectedModel,
+        }),
       });
 
       if (!vehicleRes.ok) {
@@ -271,8 +274,10 @@ export default function OnboardingPage() {
           <div className="space-y-2">
             <label className="block text-sm font-medium">Marka</label>
             <select
-              value={selectedBrand || ""}
-              onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
+              value={selectedBrand === "other" ? "other" : selectedBrand || ""}
+              onChange={(e) =>
+                setSelectedBrand(e.target.value === "other" ? "other" : e.target.value ? Number(e.target.value) : null)
+              }
               className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Marka seçin</option>
@@ -281,16 +286,19 @@ export default function OnboardingPage() {
                   {brand.name}
                 </option>
               ))}
+              <option value="other">Markam listede yok</option>
             </select>
           </div>
 
           {/* Model Seçimi */}
-          {selectedBrand && (
+          {selectedBrand && selectedBrand !== "other" && (
           <div className="space-y-2">
               <label className="block text-sm font-medium">Model</label>
             <select
-                value={selectedModel || ""}
-                onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
+                value={selectedModel === "other" ? "other" : selectedModel || ""}
+                onChange={(e) =>
+                  setSelectedModel(e.target.value === "other" ? "other" : e.target.value ? Number(e.target.value) : null)
+                }
                 className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
                 <option value="">Model seçin</option>
@@ -299,6 +307,7 @@ export default function OnboardingPage() {
                     {model.name}
                 </option>
               ))}
+                <option value="other">Modelim listede yok</option>
             </select>
           </div>
           )}

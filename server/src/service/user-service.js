@@ -33,28 +33,48 @@ export default class UserService {
      * Kullanıcının araç bilgisini güncelle
      */
     async updateVehicle(userId, brandId, modelId) {
-        // Marka ve model var mı kontrol et
-        const brandCheck = await pool.query('SELECT id FROM brands WHERE id = $1', [brandId]);
-        const modelCheck = await pool.query('SELECT id FROM models WHERE id = $1 AND brand_id = $2', [
-            modelId,
-            brandId
-        ]);
+        // Marka veya model belirtilmemişse sıfırla (liste dışı seçeneği)
+        if (!brandId) {
+            const result = await pool.query(
+                `UPDATE users 
+         SET brand_id = NULL, model_id = NULL, updated_at = NOW() 
+         WHERE id = $1 
+         RETURNING id, first_name, last_name, email, brand_id, model_id`,
+                [userId]
+            );
 
+            if (result.rows.length === 0) {
+                throw new HttpException(404, 'Kullanıcı bulunamadı');
+            }
+
+            return result.rows[0];
+        }
+
+        // Marka var mı kontrol et
+        const brandCheck = await pool.query('SELECT id FROM brands WHERE id = $1', [brandId]);
         if (brandCheck.rows.length === 0) {
             throw new HttpException(404, 'Marka bulunamadı');
         }
 
-        if (modelCheck.rows.length === 0) {
-            throw new HttpException(404, 'Model bulunamadı veya bu markaya ait değil');
+        // Model belirtilmişse ve markaya ait mi kontrol et
+        if (modelId) {
+            const modelCheck = await pool.query('SELECT id FROM models WHERE id = $1 AND brand_id = $2', [
+                modelId,
+                brandId
+            ]);
+
+            if (modelCheck.rows.length === 0) {
+                throw new HttpException(404, 'Model bulunamadı veya bu markaya ait değil');
+            }
         }
 
-        // Kullanıcının araç bilgisini güncelle
+        // Kullanıcının araç bilgisini güncelle (model opsiyonel)
         const result = await pool.query(
             `UPDATE users 
        SET brand_id = $1, model_id = $2, updated_at = NOW() 
        WHERE id = $3 
        RETURNING id, first_name, last_name, email, brand_id, model_id`,
-            [brandId, modelId, userId]
+            [brandId, modelId || null, userId]
         );
 
         if (result.rows.length === 0) {
@@ -107,19 +127,20 @@ export default class UserService {
                       name: user.city_name
                   }
                 : null,
-            vehicle:
-                user.brand_id && user.model_id
-                    ? {
-                          brand: {
-                              id: user.brand_id,
-                              name: user.brand_name
-                          },
-                          model: {
-                              id: user.model_id,
-                              name: user.model_name
-                          }
-                      }
-                    : null
+            vehicle: user.brand_id
+                ? {
+                      brand: {
+                          id: user.brand_id,
+                          name: user.brand_name
+                      },
+                      model: user.model_id
+                          ? {
+                                id: user.model_id,
+                                name: user.model_name
+                            }
+                          : null
+                  }
+                : null
         };
     }
 }
