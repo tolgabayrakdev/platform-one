@@ -341,7 +341,8 @@ export default function ProfilePage() {
           )}
           {profile?.vehicle && (
             <p className="text-sm text-muted-foreground mt-1">
-              🚗 {profile.vehicle.brand.name} {profile.vehicle.model.name}
+              🚗 {profile.vehicle.brand.name}
+              {profile.vehicle.model ? ` ${profile.vehicle.model.name}` : ""}
             </p>
           )}
         </div>
