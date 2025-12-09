@@ -69,6 +69,10 @@ interface Profile {
   id: string;
   first_name: string;
   last_name: string;
+  vehicle: {
+    brand: string;
+    model: string;
+  } | null;
   city: {
     id: number;
     name: string;
@@ -292,7 +296,14 @@ export default function FeedPage() {
       if (profileRes.ok) {
         const profileData = await profileRes.json();
 
-        if (profileData.profile?.city) {
+        if (profileData.profile) {
+          const needsOnboarding = !profileData.profile.city || !profileData.profile.vehicle;
+
+          if (needsOnboarding) {
+            router.replace("/onboarding");
+            return;
+          }
+
           setProfile(profileData.profile);
 
           // Bildirim sayısını al (sadece auth varsa)
