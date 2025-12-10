@@ -52,16 +52,12 @@ export function useLocations() {
     }
   }, []);
 
-  const resetModels = useCallback(() => {
-    setModels([]);
-  }, []);
-
   return {
     cities,
     brands,
     models,
     loading,
     fetchModels,
-    setModels: resetModels,
+    setModels: setModels as React.Dispatch<React.SetStateAction<Model[]>>,
   };
 }
