@@ -65,6 +65,11 @@ export default class PostController {
                 filters.category = req.query.category;
             }
 
+            // Arama filtresi
+            if (req.query.search) {
+                filters.search = req.query.search.trim();
+            }
+
             const result = await this.postService.getPosts(filters, page, limit, req.user?.userId || null);
 
             res.status(200).json(result);

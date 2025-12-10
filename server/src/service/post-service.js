@@ -42,6 +42,20 @@ export default class PostService {
             params.push(filters.category);
         }
 
+        // Arama filtresi - içerik, kullanıcı adı, şehir, marka, model alanlarında arama
+        if (filters.search) {
+            conditions.push(`(
+                p.content ILIKE $${paramIndex} OR
+                u.first_name ILIKE $${paramIndex} OR
+                u.last_name ILIKE $${paramIndex} OR
+                c.name ILIKE $${paramIndex} OR
+                b.name ILIKE $${paramIndex} OR
+                m.name ILIKE $${paramIndex}
+            )`);
+            params.push(`%${filters.search}%`);
+            paramIndex++;
+        }
+
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
         const result = await pool.query(
@@ -76,13 +90,19 @@ export default class PostService {
         );
 
         // Toplam sayı
-        const countResult = await pool.query(
-            `SELECT COUNT(*) FROM posts p
+        const countQuery = filters.search
+            ? `SELECT COUNT(DISTINCT p.id) FROM posts p
+       JOIN users u ON p.user_id = u.id
+       JOIN cities c ON p.city_id = c.id
        LEFT JOIN brands b ON p.brand_id = b.id
        LEFT JOIN models m ON p.model_id = m.id
-       ${whereClause}`,
-            params
-        );
+       ${whereClause}`
+            : `SELECT COUNT(*) FROM posts p
+       LEFT JOIN brands b ON p.brand_id = b.id
+       LEFT JOIN models m ON p.model_id = m.id
+       ${whereClause}`;
+        
+        const countResult = await pool.query(countQuery, params);
 
         const total = parseInt(countResult.rows[0].count);
 
