@@ -147,6 +147,8 @@ export default function FeedPage() {
   const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
   const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
   const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Trendler
   const [trendingBrands, setTrendingBrands] = useState<Array<{ id: number; name: string; post_count: number }>>([]);
@@ -158,6 +160,7 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [fetching, setFetching] = useState(false); // İlk yükleme için
+  const [totalResults, setTotalResults] = useState<number | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const initialLoadDone = useRef(false);
 
@@ -182,7 +185,19 @@ export default function FeedPage() {
     setSelectedCity(urlCity);
     setSelectedBrand(urlBrand);
     setSelectedModel(urlModel);
-  }, [urlCategory, urlCity, urlBrand, urlModel]);
+    const urlSearch = searchParams.get("search") || "";
+    setSearchQuery(urlSearch);
+    setDebouncedSearchQuery(urlSearch);
+  }, [urlCategory, urlCity, urlBrand, urlModel, searchParams]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // URL'den ?new=true gelirse dialog aç
   useEffect(() => {
@@ -234,14 +249,16 @@ export default function FeedPage() {
       city: selectedCity?.toString() || null,
       brand: selectedBrand?.toString() || null,
       model: selectedModel?.toString() || null,
+      search: debouncedSearchQuery || null,
     });
 
     // Gönderileri yeniden al
     setPosts([]);
     setPage(1);
     setHasMore(true);
+    setTotalResults(null);
     fetchPosts(1, true);
-  }, [selectedCategory, selectedCity, selectedBrand, selectedModel]);
+  }, [selectedCategory, selectedCity, selectedBrand, selectedModel, debouncedSearchQuery]);
 
   // Infinite scroll observer (sadece auth olanlar için)
   const lastPostRef = useCallback(
@@ -373,6 +390,10 @@ export default function FeedPage() {
         params.set("brandId", selectedBrand.toString());
       }
 
+      if (debouncedSearchQuery) {
+        params.set("search", debouncedSearchQuery);
+      }
+
       const postsRes = await fetch(`/api/posts?${params.toString()}`, {
         credentials: "include",
       });
@@ -397,6 +418,10 @@ export default function FeedPage() {
 
         // Daha fazla var mı kontrol et
         setHasMore(postsData.pagination.page < postsData.pagination.totalPages);
+        // Toplam sonuç sayısını kaydet
+        if (reset) {
+          setTotalResults(postsData.pagination.total);
+        }
       }
     } catch {
       toast.error("Gönderiler yüklenemedi");
@@ -614,11 +639,45 @@ export default function FeedPage() {
       {/* Header - Minimal */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-4">
-          <div className="flex items-center justify-between h-12">
-            <span className="text-sm font-medium">
+          <div className="flex items-center justify-between h-12 gap-2">
+            <span className="text-sm font-medium flex-shrink-0">
               Keşfet
             </span>
-            <div className="flex items-center gap-2">
+            {/* Arama Input */}
+            <div className="flex-1 max-w-md mx-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-1.5 pl-9 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <svg
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setDebouncedSearchQuery("");
+                      setTotalResults(null);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Bildirimler - Sadece auth olanlar için */}
               {profile && (
                 <Link
@@ -904,6 +963,22 @@ export default function FeedPage() {
               )}
             </div>
 
+            {/* Arama Sonuç Bilgisi */}
+            {!fetching && debouncedSearchQuery && totalResults !== null && (
+              <div className="px-4 py-3 mt-4 mb-4 bg-muted/50 rounded-lg border border-border">
+                {totalResults > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">"{debouncedSearchQuery}"</span> için{" "}
+                    <span className="font-semibold text-foreground">{totalResults}</span> sonuç bulundu
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">"{debouncedSearchQuery}"</span> için sonuç bulunamadı
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Posts */}
             {fetching ? (
               <div className="flex justify-center py-16">
@@ -912,7 +987,15 @@ export default function FeedPage() {
             ) : posts.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-4xl mb-3">🏘️</p>
-                <p className="text-muted-foreground">Henüz gönderi yok</p>
+                <p className="text-muted-foreground">
+                  {debouncedSearchQuery ? (
+                    <>
+                      <span className="font-medium">"{debouncedSearchQuery}"</span> için sonuç bulunamadı
+                    </>
+                  ) : (
+                    "Henüz gönderi yok"
+                  )}
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-border">
