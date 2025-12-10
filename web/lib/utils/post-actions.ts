@@ -1,39 +1,15 @@
 import { toast } from "sonner";
 import { Post } from "@/lib/types/posts";
 import { CATEGORY_LABELS } from "@/lib/constants/posts";
-import { copyToClipboard } from "./posts";
 
-export async function handleSharePost(e: React.MouseEvent, post: Post) {
-  e.preventDefault();
-  e.stopPropagation();
-
-  const url = `${window.location.origin}/post/${post.id}`;
+export function getShareData(post: Post) {
+  const url = `${typeof window !== "undefined" ? window.location.origin : ""}/post/${post.id}`;
   const text = `${post.content.slice(0, 100)}${post.content.length > 100 ? "..." : ""}`;
   const category = CATEGORY_LABELS[post.category];
   const vehicle = post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : "";
   const title = `${category?.emoji || ""} ${category?.label || "Gönderi"}${vehicle} | Garaj Muhabbet`;
 
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, text, url });
-    } catch (err) {
-      if ((err as Error).name !== "AbortError") {
-        try {
-          await copyToClipboard(url);
-          toast.success("Link kopyalandı!");
-        } catch {
-          toast.error("Link kopyalanamadı");
-        }
-      }
-    }
-  } else {
-    try {
-      await copyToClipboard(url);
-      toast.success("Link kopyalandı!");
-    } catch {
-      toast.error("Link kopyalanamadı");
-    }
-  }
+  return { url, title, text };
 }
 
 export async function handleDeletePost(

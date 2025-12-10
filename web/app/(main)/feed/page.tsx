@@ -12,7 +12,8 @@ import PageHeader from "@/components/posts/page-header";
 import FilterDrawer from "@/components/posts/filter-drawer";
 import PostCard from "@/components/posts/post-card";
 import SearchResultsInfo from "@/components/posts/search-results-info";
-import { handleSharePost, handleDeletePost } from "@/lib/utils/post-actions";
+import { handleDeletePost, getShareData } from "@/lib/utils/post-actions";
+import ShareDialog from "@/components/posts/share-dialog";
 
 export default function FeedPage() {
   const router = useRouter();
@@ -24,6 +25,8 @@ export default function FeedPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [sharePost, setSharePost] = useState<Post | null>(null);
 
   // Filtreler - URL'den oku
   const urlCategory = searchParams.get("category") || "";
@@ -418,7 +421,10 @@ export default function FeedPage() {
   }, [posts]);
 
   const handleShare = useCallback((e: React.MouseEvent, post: Post) => {
-    handleSharePost(e, post);
+    e.preventDefault();
+    e.stopPropagation();
+    setSharePost(post);
+    setShowShareDialog(true);
   }, []);
 
   const handleSearchClear = useCallback(() => {
@@ -726,6 +732,15 @@ export default function FeedPage() {
             setHasMore(true);
             fetchPosts(1, true);
           }}
+        />
+      )}
+
+      {/* Share Dialog */}
+      {sharePost && (
+        <ShareDialog
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+          {...getShareData(sharePost)}
         />
       )}
     </div>
