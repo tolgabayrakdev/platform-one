@@ -11,6 +11,7 @@ import ProfileInfoSection from "@/components/profile/profile-info-section";
 import NotificationSettings from "@/components/profile/notification-settings";
 import ThemeSelector from "@/components/profile/theme-selector";
 import LogoutButton from "@/components/profile/logout-button";
+import GarageNotesSection from "@/components/profile/garage-notes-section";
 
 export default function ProfilePage() {
   const { profile, loading, updateCity, updateVehicle } = useProfile();
@@ -55,6 +56,7 @@ export default function ProfilePage() {
       <main className="max-w-xl mx-auto px-4 py-6">
         <ProfileHeader profile={profile} />
         <BadgesSection badgeData={badgeData} />
+        <GarageNotesSection />
         <ProfileInfoSection
           profile={profile}
           cities={cities}

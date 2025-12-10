@@ -14,6 +14,7 @@ import notificationRoutes from './routes/notification-routes.js';
 import uploadRoutes from './routes/upload-routes.js';
 import badgeRoutes from './routes/badge-routes.js';
 import pollRoutes from './routes/poll-routes.js';
+import garageNoteRoutes from './routes/garage-note-routes.js';
 import errorHandler from './middleware/error-handler.js';
 import logger from './config/logger.js';
 import { generalLimiter } from './middleware/rate-limiter.js';
@@ -58,6 +59,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api', badgeRoutes);
 app.use('/api', pollRoutes);
+app.use('/api/garage-notes', garageNoteRoutes);
 
 app.use(errorHandler);
 

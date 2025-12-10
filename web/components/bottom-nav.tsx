@@ -29,6 +29,10 @@ export default function BottomNav() {
     if (checkScope) {
       return pathname === path && scope === checkScope;
     }
+    // Profil sayfası için alt route'ları da kontrol et
+    if (path === "/profile") {
+      return pathname === path || pathname.startsWith(path + "/");
+    }
     return pathname === path;
   };
 
