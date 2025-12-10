@@ -290,6 +290,10 @@ export default async function Home() {
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex flex-col items-center gap-3 md:gap-4">
             <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 text-xs md:text-sm text-muted-foreground">
+              <Link href="/blog" className="hover:text-foreground transition-colors">
+                Blog
+              </Link>
+              <span>·</span>
               <Link href="/about" className="hover:text-foreground transition-colors">
                 Hakkımızda
               </Link>
