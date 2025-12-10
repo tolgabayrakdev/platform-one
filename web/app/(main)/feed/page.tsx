@@ -3,125 +3,16 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import { toast } from "sonner";
 import CreatePostDialog from "./create-post-dialog";
-import PollCard from "@/components/poll-card";
-
-interface User {
-  id: string;
-  first_name: string;
-  last_name: string;
-  badges?: {
-    comment: string | null;
-    post: string | null;
-  };
-}
-
-interface Location {
-  city: string;
-}
-
-interface Vehicle {
-  brand: string;
-  model: string;
-}
-
-interface PollOption {
-  id: number;
-  option_text: string;
-  option_order: number;
-  vote_count: number;
-  percentage: number;
-}
-
-interface Poll {
-  id: string;
-  question: string;
-  created_at: string;
-  options: PollOption[];
-  total_votes: number;
-  user_vote: number | null;
-  has_voted: boolean;
-}
-
-interface Post {
-  id: string;
-  category: string;
-  content: string;
-  created_at: string;
-  images?: Array<{ url: string; public_id: string }>;
-  comment_count?: number;
-  user: User;
-  location: Location;
-  vehicle: Vehicle | null;
-  poll?: Poll | null;
-}
-
-interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  vehicle: {
-    brand: string;
-    model: string;
-  } | null;
-  city: {
-    id: number;
-    name: string;
-  } | null;
-}
-
-interface City {
-  id: number;
-  name: string;
-}
-
-interface Brand {
-  id: number;
-  name: string;
-}
-
-interface Model {
-  id: number;
-  name: string;
-}
-
-const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  soru: { label: "Soru", emoji: "❓", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" },
-  yedek_parca: { label: "Yedek Parça", emoji: "🔧", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" },
-  servis: { label: "Servis", emoji: "🛠️", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" },
-  bakim: { label: "Bakım", emoji: "⚙️", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
-  deneyim: { label: "Deneyim", emoji: "💬", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300" },
-  yardim: { label: "Yardım", emoji: "🤝", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" },
-  anket: { label: "Anket", emoji: "📊", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" },
-};
-
-const CATEGORIES = [
-  { value: "soru", label: "Soru", emoji: "❓" },
-  { value: "yedek_parca", label: "Yedek Parça", emoji: "🔧" },
-  { value: "servis", label: "Servis", emoji: "🛠️" },
-  { value: "bakim", label: "Bakım", emoji: "⚙️" },
-  { value: "deneyim", label: "Deneyim", emoji: "💬" },
-  { value: "yardim", label: "Yardım", emoji: "🤝" },
-  { value: "anket", label: "Anket", emoji: "📊" },
-];
-
-// Rozet bilgileri
-const BADGE_INFO: Record<string, { name: string; emoji: string }> = {
-  bronze: { name: "Bronz", emoji: "🥉" },
-  silver: { name: "Gümüş", emoji: "🥈" },
-  gold: { name: "Altın", emoji: "🥇" },
-  platinum: { name: "Platin", emoji: "💎" },
-  diamond: { name: "Elmas", emoji: "💠" },
-};
+import { Post, Profile, City, Brand, Model, TrendingBrand, TrendingCity, TrendingCategory } from "@/lib/types/posts";
+import { CATEGORY_LABELS } from "@/lib/constants/posts";
+import { useSearch } from "@/hooks/use-search";
+import PageHeader from "@/components/posts/page-header";
+import FilterDrawer from "@/components/posts/filter-drawer";
+import PostCard from "@/components/posts/post-card";
+import SearchResultsInfo from "@/components/posts/search-results-info";
+import { handleSharePost, handleDeletePost } from "@/lib/utils/post-actions";
 
 export default function FeedPage() {
   const router = useRouter();
@@ -147,13 +38,15 @@ export default function FeedPage() {
   const [selectedBrand, setSelectedBrand] = useState<number | null>(urlBrand);
   const [selectedModel, setSelectedModel] = useState<number | null>(urlModel);
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  
+  // Search hook
+  const urlSearch = searchParams.get("search") || "";
+  const { searchQuery, debouncedSearchQuery, setSearchQuery, clearSearch } = useSearch(urlSearch);
 
   // Trendler
-  const [trendingBrands, setTrendingBrands] = useState<Array<{ id: number; name: string; post_count: number }>>([]);
-  const [trendingCities, setTrendingCities] = useState<Array<{ id: number; name: string; post_count: number }>>([]);
-  const [trendingCategories, setTrendingCategories] = useState<Array<{ category: string; post_count: number }>>([]);
+  const [trendingBrands, setTrendingBrands] = useState<TrendingBrand[]>([]);
+  const [trendingCities, setTrendingCities] = useState<TrendingCity[]>([]);
+  const [trendingCategories, setTrendingCategories] = useState<TrendingCategory[]>([]);
 
   // Infinite scroll
   const [page, setPage] = useState(1);
@@ -185,19 +78,10 @@ export default function FeedPage() {
     setSelectedCity(urlCity);
     setSelectedBrand(urlBrand);
     setSelectedModel(urlModel);
-    const urlSearch = searchParams.get("search") || "";
-    setSearchQuery(urlSearch);
-    setDebouncedSearchQuery(urlSearch);
-  }, [urlCategory, urlCity, urlBrand, urlModel, searchParams]);
-
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    if (urlSearch !== searchQuery) {
+      setSearchQuery(urlSearch);
+    }
+  }, [urlCategory, urlCity, urlBrand, urlModel, urlSearch]);
 
   // URL'den ?new=true gelirse dialog aç
   useEffect(() => {
@@ -529,97 +413,20 @@ export default function FeedPage() {
     prevBrandRef.current = selectedBrand;
   }, [selectedBrand]);
 
-  async function handleDelete(postId: string) {
-    if (!confirm("Bu gönderiyi silmek istediğinize emin misiniz?")) return;
+  const handleDelete = useCallback((postId: string) => {
+    handleDeletePost(postId, posts, setPosts, setDeletingId);
+  }, [posts]);
 
-    setDeletingId(postId);
+  const handleShare = useCallback((e: React.MouseEvent, post: Post) => {
+    handleSharePost(e, post);
+  }, []);
 
-    try {
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+  const handleSearchClear = useCallback(() => {
+    clearSearch();
+    setTotalResults(null);
+  }, [clearSearch]);
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Gönderi silinemedi");
-      }
-
-      setPosts(posts.filter((p) => p.id !== postId));
-      toast.success("Gönderi silindi");
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Bir hata oluştu";
-      toast.error(message);
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
-  async function handleShare(e: React.MouseEvent, post: Post) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const url = `${window.location.origin}/post/${post.id}`;
-    const text = `${post.content.slice(0, 100)}${post.content.length > 100 ? "..." : ""}`;
-    const category = CATEGORY_LABELS[post.category];
-    const vehicle = post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : "";
-    const title = `${category?.emoji || ""} ${category?.label || "Gönderi"}${vehicle} | Garaj Muhabbet`;
-
-    // Web Share API destekleniyorsa
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
-      } catch (err) {
-        // Kullanıcı paylaşımı iptal ettiyse sessizce geç
-        if ((err as Error).name !== "AbortError") {
-          // Fallback: Kopyala
-          await copyToClipboard(url);
-        }
-      }
-    } else {
-      // Fallback: Kopyala
-      await copyToClipboard(url);
-    }
-  }
-
-  async function copyToClipboard(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Link kopyalandı!");
-    } catch {
-      toast.error("Link kopyalanamadı");
-    }
-  }
-
-  async function handleLogout() {
-    if (!confirm("Çıkış yapmak istediğinize emin misiniz?")) return;
-
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      window.location.href = "/sign-in";
-    } catch {
-      toast.error("Çıkış yapılamadı");
-    }
-  }
-
-  function formatDate(dateStr: string) {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Az önce";
-    if (diffMins < 60) return `${diffMins} dk önce`;
-    if (diffHours < 24) return `${diffHours} saat önce`;
-    if (diffDays < 7) return `${diffDays} gün önce`;
-
-    return date.toLocaleDateString("tr-TR");
-  }
+  const activeFilterCount = [selectedCategory, selectedCity, selectedBrand, selectedModel].filter(Boolean).length;
 
   if (loading) {
     return (
@@ -632,211 +439,41 @@ export default function FeedPage() {
     );
   }
 
-  const activeFilterCount = [selectedCategory, selectedCity, selectedBrand, selectedModel].filter(Boolean).length;
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - Minimal */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-4">
-          <div className="flex items-center justify-between h-12 gap-2">
-            <span className="text-sm font-medium flex-shrink-0">
-              Keşfet
-            </span>
-            {/* Arama Input */}
-            <div className="flex-1 max-w-md mx-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Ara..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-3 py-1.5 pl-9 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-                <svg
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                {searchQuery && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery("");
-                      setDebouncedSearchQuery("");
-                      setTotalResults(null);
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Bildirimler - Sadece auth olanlar için */}
-              {profile && (
-                <Link
-                  href="/notifications"
-                  className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {unreadNotificationCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
-                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                    </span>
-                  )}
-                </Link>
-              )}
+      <PageHeader
+        title="Keşfet"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearchClear={handleSearchClear}
+        unreadNotificationCount={profile ? unreadNotificationCount : 0}
+        activeFilterCount={activeFilterCount}
+        onFilterClick={() => setShowFilters(true)}
+        showSignIn={!profile}
+      />
 
-              {/* Giriş Yap - Auth yoksa */}
-              {!profile && (
-                <Link
-                  href="/sign-in"
-                  className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-                >
-                  Giriş Yap
-                </Link>
-              )}
-
-              {/* Filtreler */}
-              <button
-                onClick={() => setShowFilters(true)}
-                className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] bg-primary text-primary-foreground rounded-full">
-                    {activeFilterCount > 9 ? "9+" : activeFilterCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Filter Drawer */}
-      <Drawer open={showFilters} onOpenChange={setShowFilters} noBodyStyles>
-        <DrawerContent className="max-h-[70vh]">
-          <div className="mx-auto w-full max-w-md">
-            <DrawerHeader className="pb-2">
-              <DrawerTitle className="text-base">Filtreler</DrawerTitle>
-            </DrawerHeader>
-
-            <div className="px-4 pb-6 space-y-5">
-              {/* Kategori */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Kategori</label>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    onClick={() => setSelectedCategory("")}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-                      }`}
-                  >
-                    Tümü
-                  </button>
-                  {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.value}
-                      onClick={() => setSelectedCategory(cat.value)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${selectedCategory === cat.value ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-                        }`}
-                    >
-                      <span className="mr-1">{cat.emoji}</span>
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Konum */}
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-muted-foreground">Konum</label>
-
-                {/* İl */}
-                <select
-                  value={selectedCity || ""}
-                  onChange={(e) => setSelectedCity(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">Tüm İller</option>
-                  {cities.map((city) => (
-                    <option key={city.id} value={city.id}>{city.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Marka ve Model */}
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-muted-foreground">Araç</label>
-
-                {/* Marka */}
-                <select
-                  value={selectedBrand || ""}
-                  onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">Tüm Markalar</option>
-                  {brands.map((brand) => (
-                    <option key={brand.id} value={brand.id}>{brand.name}</option>
-                  ))}
-                </select>
-
-                {/* Model */}
-                {selectedBrand && (
-                  <select
-                    value={selectedModel || ""}
-                    onChange={(e) => setSelectedModel(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                  >
-                    <option value="">Tüm Modeller</option>
-                    {models.map((model) => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Aktif filtreler özeti */}
-              {activeFilterCount > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{activeFilterCount} filtre aktif</span>
-                    <button
-                      onClick={() => {
-                        setSelectedCategory("");
-                        setSelectedCity(null);
-                        setSelectedBrand(null);
-                        setSelectedModel(null);
-                      }}
-                      className="text-xs text-destructive hover:underline"
-                    >
-                      Tümünü Temizle
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Uygula butonu */}
-              <Button
-                onClick={() => setShowFilters(false)}
-                className="w-full h-10 rounded-lg"
-              >
-                Uygula
-              </Button>
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <FilterDrawer
+        open={showFilters}
+        onOpenChange={setShowFilters}
+        selectedCategory={selectedCategory}
+        selectedCity={selectedCity}
+        selectedBrand={selectedBrand}
+        selectedModel={selectedModel}
+        cities={cities}
+        brands={brands}
+        models={models}
+        onCategoryChange={setSelectedCategory}
+        onCityChange={setSelectedCity}
+        onBrandChange={setSelectedBrand}
+        onModelChange={setSelectedModel}
+        onClearAll={() => {
+          setSelectedCategory("");
+          setSelectedCity(null);
+          setSelectedBrand(null);
+          setSelectedModel(null);
+        }}
+        showCityFilter={true}
+      />
 
       {/* Content - LinkedIn tarzı 3 kolonlu layout */}
       <main className="max-w-7xl mx-auto pb-24">
@@ -963,21 +600,11 @@ export default function FeedPage() {
               )}
             </div>
 
-            {/* Arama Sonuç Bilgisi */}
-            {!fetching && debouncedSearchQuery && totalResults !== null && (
-              <div className="px-4 py-3 mt-4 mb-4 bg-muted/50 rounded-lg border border-border">
-                {totalResults > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">"{debouncedSearchQuery}"</span> için{" "}
-                    <span className="font-semibold text-foreground">{totalResults}</span> sonuç bulundu
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">"{debouncedSearchQuery}"</span> için sonuç bulunamadı
-                  </p>
-                )}
-              </div>
-            )}
+            <SearchResultsInfo
+              searchQuery={debouncedSearchQuery}
+              totalResults={totalResults}
+              isFetching={fetching}
+            />
 
             {/* Posts */}
             {fetching ? (
@@ -1000,153 +627,23 @@ export default function FeedPage() {
             ) : (
               <div className="divide-y divide-border">
                 {posts.map((post, index) => {
-                  const category = CATEGORY_LABELS[post.category] || {
-                    label: post.category,
-                    emoji: "📌",
-                    color: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
-                  };
-
                   const isLast = index === posts.length - 1;
-                  const shouldObserve = isLast;
-
                   return (
-                    <article
+                    <PostCard
                       key={post.id}
-                      ref={shouldObserve ? lastPostRef : null}
-                      className="hover:bg-muted/30"
-                    >
-                      <Link href={`/post/${post.id}`} className="block px-4 py-4">
-                        {/* Header */}
-                        <div className="flex items-start gap-3">
-                          {/* Avatar */}
-                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-                            {post.user.first_name.charAt(0)}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="font-medium text-sm">
-                                {post.user.first_name} {post.user.last_name}
-                              </span>
-                              {/* Rozetler */}
-                              {post.user.badges?.post && BADGE_INFO[post.user.badges.post] && (
-                                <span
-                                  title={`${BADGE_INFO[post.user.badges.post].name} Gönderi Rozeti`}
-                                  className="cursor-help text-sm"
-                                >
-                                  {BADGE_INFO[post.user.badges.post].emoji}
-                                </span>
-                              )}
-                              {post.user.badges?.comment && BADGE_INFO[post.user.badges.comment] && (
-                                <span
-                                  title={`${BADGE_INFO[post.user.badges.comment].name} Yorum Rozeti`}
-                                  className="cursor-help text-sm"
-                                >
-                                  {BADGE_INFO[post.user.badges.comment].emoji}
-                                </span>
-                              )}
-                              <span className="text-muted-foreground text-sm">·</span>
-                              <span className="text-muted-foreground text-sm">{formatDate(post.created_at)}</span>
-                            </div>
-
-                            {post.location && (
-                              <p className="text-xs text-muted-foreground mb-2">
-                                📍 {post.location.city}
-                              </p>
-                            )}
-
-                            {post.vehicle && (
-                              <p className="text-xs text-muted-foreground mb-2">
-                                🚗 {post.vehicle.brand} {post.vehicle.model}
-                              </p>
-                            )}
-
-                            <p className="text-sm mb-2 whitespace-pre-wrap">{post.content}</p>
-
-                            {/* Anket */}
-                            {post.category === "anket" && post.poll && (
-                              <div onClick={(e) => e.preventDefault()}>
-                                <PollCard
-                                  postId={post.id}
-                                  poll={post.poll}
-                                  isAuthenticated={!!profile}
-                                  onVote={(updatedPoll) => {
-                                    setPosts(prev => prev.map(p =>
-                                      p.id === post.id ? { ...p, poll: updatedPoll } : p
-                                    ));
-                                  }}
-                                />
-                              </div>
-                            )}
-
-                            {/* Resimler */}
-                            {post.images && post.images.length > 0 && (
-                              <div className={`mb-2 grid gap-1.5 ${post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
-                                }`}>
-                                {post.images.map((img, idx) => (
-                                  <img
-                                    key={idx}
-                                    src={img.url}
-                                    alt={`Gönderi resmi ${idx + 1}`}
-                                    className="w-full h-48 object-cover rounded-lg border border-border"
-                                  />
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Category + Actions */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-xs px-2 py-0.5 rounded ${category.color}`}>
-                                  {category.emoji} {category.label}
-                                </span>
-                                {post.comment_count !== undefined && post.comment_count > 0 && (
-                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    {post.comment_count}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                {/* Paylaş */}
-                                <button
-                                  onClick={(e) => handleShare(e, post)}
-                                  className="text-muted-foreground hover:text-foreground"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                  </svg>
-                                </button>
-
-                                {/* Sil (sadece kendi gönderileri) */}
-                                {post.user.id === profile?.id && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      handleDelete(post.id);
-                                    }}
-                                    disabled={deletingId === post.id}
-                                    className="text-muted-foreground hover:text-destructive"
-                                  >
-                                    {deletingId === post.id ? (
-                                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    )}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    </article>
+                      post={post}
+                      profile={profile}
+                      isLast={isLast}
+                      lastPostRef={lastPostRef}
+                      deletingId={deletingId}
+                      onDelete={handleDelete}
+                      onShare={handleShare}
+                      onPollVote={(postId, updatedPoll) => {
+                        setPosts(prev => prev.map(p =>
+                          p.id === postId ? { ...p, poll: updatedPoll } : p
+                        ));
+                      }}
+                    />
                   );
                 })}
 
