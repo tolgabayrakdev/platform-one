@@ -272,14 +272,16 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
       onOpenChange={(isOpen) => !isOpen && !saving && onClose()}
       noBodyStyles
     >
-      <DrawerContent className="max-h-[85vh]">
-        <div className="mx-auto w-full max-w-md">
-          <DrawerHeader className="pb-2">
-            <DrawerTitle className="text-base">Yeni Gönderi</DrawerTitle>
-          </DrawerHeader>
+      <DrawerContent className="max-h-[85vh] flex flex-col">
+        <DrawerHeader className="pb-2 px-4">
+          <DrawerTitle className="text-base">Yeni Gönderi</DrawerTitle>
+        </DrawerHeader>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="px-4 pb-6 space-y-4">
+        <div className="mx-auto w-full max-w-md flex flex-col flex-1 min-h-0">
+          {/* Form Container - Scrollable */}
+          <div className="flex-1 overflow-y-auto px-4">
+            {/* Form */}
+            <form onSubmit={handleSubmit} id="post-form" className="space-y-4 pb-4">
             {/* Kategori Seçimi */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-muted-foreground">Kategori</label>
@@ -478,34 +480,36 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                 <p className="text-xs text-destructive">⛔ Maksimum 500 karakter girebilirsiniz</p>
               )}
             </div>
+            </form>
+          </div>
 
-            {/* Buttons */}
-            <div className="flex gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={saving}
-                className="flex-1 h-10 rounded-lg text-sm"
-              >
-                İptal
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  saving ||
-                  uploadingImages ||
-                  !category ||
-                  content.trim().length < 10 ||
-                  (category !== "anket" && (!selectedBrand || !selectedModel)) ||
-                  (category === "anket" && pollOptions.filter(o => o.trim()).length < 2)
-                }
-                className="flex-1 h-10 rounded-lg text-sm"
-              >
-                {saving || uploadingImages ? "Paylaşılıyor..." : "Paylaş"}
-              </Button>
-            </div>
-          </form>
+          {/* Buttons - Fixed at bottom */}
+          <div className="flex-shrink-0 flex gap-2 px-4 py-4 border-t border-border bg-background">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+              className="flex-1 h-10 rounded-lg text-sm"
+            >
+              İptal
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                saving ||
+                uploadingImages ||
+                !category ||
+                content.trim().length < 10 ||
+                (category !== "anket" && (!selectedBrand || !selectedModel)) ||
+                (category === "anket" && pollOptions.filter(o => o.trim()).length < 2)
+              }
+              className="flex-1 h-10 rounded-lg text-sm"
+              form="post-form"
+            >
+              {saving || uploadingImages ? "Paylaşılıyor..." : "Paylaş"}
+            </Button>
+          </div>
         </div>
       </DrawerContent>
     </Drawer>
