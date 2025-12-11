@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "https://api.garajmuhabbet.com/api/:path*",
+        destination: "http://localhost:1234/api/:path*",
         has: [
           {
             type: 'header',

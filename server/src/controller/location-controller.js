@@ -69,4 +69,37 @@ export default class LocationController {
             next(error);
         }
     }
+
+    /**
+     * Tüm şehirlerin post sayılarını getir (harita için)
+     * GET /api/locations/cities/stats
+     */
+    async getCitiesWithStats(req, res, next) {
+        try {
+            const cities = await this.locationService.getCitiesWithPostCounts();
+            res.status(200).json({ cities });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Belirli bir şehirdeki son gönderileri getir
+     * GET /api/locations/cities/:cityId/posts
+     */
+    async getRecentPostsByCity(req, res, next) {
+        try {
+            const { cityId } = req.params;
+            const limit = parseInt(req.query.limit) || 5;
+
+            if (!cityId) {
+                throw new HttpException(400, 'Şehir ID zorunludur');
+            }
+
+            const posts = await this.locationService.getRecentPostsByCity(cityId, limit);
+            res.status(200).json({ posts });
+        } catch (error) {
+            next(error);
+        }
+    }
 }

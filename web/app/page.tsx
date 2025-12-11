@@ -5,6 +5,7 @@ import PostsList from "./posts-list";
 import LandingHero from "@/components/landing-hero";
 import LandingStats from "@/components/landing-stats";
 import LandingTrends from "@/components/landing-trends";
+import LandingMap from "@/components/landing-map";
 
 const baseUrl = process.env.NEXT_PUBLIC_URL || "https://garajmuhabbet.com";
 
@@ -121,11 +122,28 @@ async function getTrends() {
   }
 }
 
+async function getCityStats() {
+  try {
+    const res = await fetch(`${API_URL}/api/locations/cities/stats`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json();
+    // API { cities } formatında dönüyor
+    return Array.isArray(data.cities) ? data.cities : (Array.isArray(data) ? data : []);
+  } catch {
+    return [];
+  }
+}
+
 export default async function Home() {
-  const [posts, stats, trends] = await Promise.all([
+  const [posts, stats, trends, cityStats] = await Promise.all([
     getLatestPosts(),
     getPlatformStats(),
     getTrends(),
+    getCityStats(),
   ]);
 
   // Structured Data (JSON-LD) - Organization ve WebSite
@@ -250,6 +268,9 @@ export default async function Home() {
           categories={trends.categories || []}
         />
 
+        {/* Map Section */}
+        <LandingMap cityStats={cityStats || []} />
+
         {/* Posts Section */}
         <section className="max-w-3xl mx-auto space-y-3 mt-8 md:mt-12">
           <div className="flex items-center justify-between mb-4 md:mb-6">
@@ -290,6 +311,10 @@ export default async function Home() {
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex flex-col items-center gap-3 md:gap-4">
             <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 text-xs md:text-sm text-muted-foreground">
+              <Link href="/map" className="hover:text-foreground transition-colors">
+                🗺️ Harita
+              </Link>
+              <span>·</span>
               <Link href="/blog" className="hover:text-foreground transition-colors">
                 Blog
               </Link>
