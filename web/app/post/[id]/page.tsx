@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import BackButton from "./back-button";
-import ShareButton from "./share-button";
+import ShareDialogWrapper from "./share-dialog-wrapper";
 import CommentsSection from "./comments-section";
 import ImageGallery from "./image-gallery";
 import PollSection from "./poll-section";
@@ -497,7 +497,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
           {/* Actions */}
           <div className="flex items-center gap-4 pt-3 border-t border-border">
-            <ShareButton
+            <ShareDialogWrapper
               postId={post.id}
               title={`${category.emoji} ${category.label}${post.vehicle ? ` - ${post.vehicle.brand} ${post.vehicle.model}` : ""} | Garaj Muhabbet`}
               text={post.content.slice(0, 100) + (post.content.length > 100 ? "..." : "")}

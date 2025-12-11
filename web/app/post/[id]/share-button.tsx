@@ -1,42 +1,16 @@
 "use client";
 
-import { toast } from "sonner";
-
 interface ShareButtonProps {
   postId: string;
   title: string;
   text: string;
+  onShareClick: () => void;
 }
 
-export default function ShareButton({ postId, title, text }: ShareButtonProps) {
-  async function handleShare() {
-    const url = `${window.location.origin}/post/${postId}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          await copyToClipboard(url);
-        }
-      }
-    } else {
-      await copyToClipboard(url);
-    }
-  }
-
-  async function copyToClipboard(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Link kopyalandı!");
-    } catch {
-      toast.error("Link kopyalanamadı");
-    }
-  }
-
+export default function ShareButton({ onShareClick }: ShareButtonProps) {
   return (
     <button
-      onClick={handleShare}
+      onClick={onShareClick}
       className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
     >
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
