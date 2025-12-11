@@ -1,8 +1,8 @@
 import pool from '../config/database.js';
 import bcrypt from 'bcrypt';
-import { randomInt } from 'crypto';
+import { randomInt, randomBytes } from 'crypto';
 import emailService from '../util/send-email.js';
-import { getEmailVerificationTemplate, getWelcomeEmailTemplate } from '../util/email-templates.js';
+import { getEmailVerificationTemplate, getWelcomeEmailTemplate, getPasswordResetTemplate } from '../util/email-templates.js';
 import { sendSms } from '../util/send-sms.js';
 import { generateAccessToken, generateRefreshToken } from '../util/jwt.js';
 import HttpException from '../exceptions/http-exception.js';
@@ -423,6 +423,157 @@ export default class AuthService {
 
             return user;
         } catch (error) {
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Şifre sıfırlama token'ı oluştur ve email gönder
+     */
+    async forgotPassword(email) {
+        const client = await pool.connect();
+
+        try {
+            // Kullanıcıyı bul
+            const userResult = await client.query(
+                'SELECT id, first_name, email FROM users WHERE email = $1',
+                [email]
+            );
+
+            // Kullanıcı yoksa hata döndür
+            if (userResult.rows.length === 0) {
+                throw new HttpException(404, 'Bu e-posta adresine kayıtlı bir hesap bulunamadı.');
+            }
+
+            const user = userResult.rows[0];
+
+            // Token oluştur (crypto ile güvenli token)
+            const resetToken = randomBytes(32).toString('hex');
+            const resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 dakika
+
+            // Token'ı veritabanına kaydet
+            await client.query(
+                `UPDATE users 
+                 SET password_reset_token = $1, 
+                     password_reset_token_expires_at = $2,
+                     updated_at = NOW()
+                 WHERE email = $3`,
+                [resetToken, resetTokenExpiry, email]
+            );
+
+            // Frontend URL'ini environment'tan al veya varsayılan kullan
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+            // Email gönder
+            try {
+                await emailService.sendEmail(
+                    email,
+                    'Şifre Sıfırlama',
+                    getPasswordResetTemplate(resetUrl, user.first_name)
+                );
+            } catch (emailError) {
+                logger.warn('Şifre sıfırlama emaili gönderilemedi:', emailError);
+                throw new HttpException(500, 'Email gönderilemedi. Lütfen tekrar deneyin.');
+            }
+
+            return { message: 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.' };
+        } catch (error) {
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Token'ın geçerli olup olmadığını kontrol et
+     */
+    async validateResetToken(token) {
+        const client = await pool.connect();
+
+        try {
+            // Token ile kullanıcıyı bul
+            const userResult = await client.query(
+                `SELECT id, password_reset_token_expires_at 
+                 FROM users 
+                 WHERE password_reset_token = $1`,
+                [token]
+            );
+
+            if (userResult.rows.length === 0) {
+                return { valid: false, message: 'Geçersiz şifre sıfırlama bağlantısı' };
+            }
+
+            const user = userResult.rows[0];
+
+            // Token süresi kontrolü
+            const now = new Date();
+            if (!user.password_reset_token_expires_at || new Date(user.password_reset_token_expires_at) < now) {
+                return { valid: false, message: 'Şifre sıfırlama bağlantısının süresi dolmuş' };
+            }
+
+            return { valid: true };
+        } catch (error) {
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Token ile şifreyi sıfırla
+     */
+    async resetPassword(token, newPassword) {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            // Token ile kullanıcıyı bul
+            const userResult = await client.query(
+                `SELECT id, email, password_reset_token_expires_at 
+                 FROM users 
+                 WHERE password_reset_token = $1`,
+                [token]
+            );
+
+            if (userResult.rows.length === 0) {
+                throw new HttpException(400, 'Geçersiz veya süresi dolmuş şifre sıfırlama bağlantısı');
+            }
+
+            const user = userResult.rows[0];
+
+            // Token süresi kontrolü
+            const now = new Date();
+            if (!user.password_reset_token_expires_at || new Date(user.password_reset_token_expires_at) < now) {
+                throw new HttpException(400, 'Şifre sıfırlama bağlantısının süresi dolmuş');
+            }
+
+            // Şifre uzunluk kontrolü
+            if (newPassword.length < 6) {
+                throw new HttpException(400, 'Şifre en az 6 karakter olmalıdır');
+            }
+
+            // Yeni şifreyi hashle
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            // Şifreyi güncelle ve token'ı temizle
+            await client.query(
+                `UPDATE users 
+                 SET password = $1, 
+                     password_reset_token = NULL,
+                     password_reset_token_expires_at = NULL,
+                     updated_at = NOW()
+                 WHERE id = $2`,
+                [hashedPassword, user.id]
+            );
+
+            await client.query('COMMIT');
+            return { message: 'Şifreniz başarıyla sıfırlandı' };
+        } catch (error) {
+            await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();

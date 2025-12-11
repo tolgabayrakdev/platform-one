@@ -13,6 +13,9 @@ router.post('/verify-phone', verifyLimiter, authController.verifyPhone.bind(auth
 router.post('/resend-email-code', codeLimiter, authController.resendEmailCode.bind(authController));
 router.post('/resend-phone-code', codeLimiter, authController.resendPhoneCode.bind(authController));
 router.post('/login', authLimiter, authController.login.bind(authController));
+router.post('/forgot-password', authLimiter, authController.forgotPassword.bind(authController));
+router.get('/validate-reset-token', authController.validateResetToken.bind(authController));
+router.post('/reset-password', authLimiter, authController.resetPassword.bind(authController));
 
 // Protected routes
 router.get('/me', authenticateToken, authController.me.bind(authController));

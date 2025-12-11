@@ -230,4 +230,79 @@ export default class AuthController {
             next(error);
         }
     }
+
+    /**
+     * Şifre sıfırlama isteği
+     * POST /api/auth/forgot-password
+     */
+    async forgotPassword(req, res, next) {
+        try {
+            const { email } = req.body;
+
+            if (!email) {
+                throw new HttpException(400, 'E-posta adresi zorunludur');
+            }
+
+            // Email format kontrolü
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                throw new HttpException(400, 'Geçerli bir e-posta adresi giriniz');
+            }
+
+            const result = await this.authService.forgotPassword(email);
+
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Token doğrulama
+     * GET /api/auth/validate-reset-token?token=...
+     */
+    async validateResetToken(req, res, next) {
+        try {
+            const { token } = req.query;
+
+            if (!token) {
+                throw new HttpException(400, 'Token zorunludur');
+            }
+
+            const result = await this.authService.validateResetToken(token);
+
+            if (!result.valid) {
+                throw new HttpException(400, result.message);
+            }
+
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Şifre sıfırlama
+     * POST /api/auth/reset-password
+     */
+    async resetPassword(req, res, next) {
+        try {
+            const { token, password } = req.body;
+
+            if (!token || !password) {
+                throw new HttpException(400, 'Token ve şifre zorunludur');
+            }
+
+            // Şifre uzunluk kontrolü
+            if (password.length < 6) {
+                throw new HttpException(400, 'Şifre en az 6 karakter olmalıdır');
+            }
+
+            const result = await this.authService.resetPassword(token, password);
+
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
 }

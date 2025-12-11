@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useProfile } from "@/hooks/use-profile";
 import { useBadges } from "@/hooks/use-badges";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -12,12 +12,15 @@ import NotificationSettings from "@/components/profile/notification-settings";
 import ThemeSelector from "@/components/profile/theme-selector";
 import LogoutButton from "@/components/profile/logout-button";
 import GarageNotesSection from "@/components/profile/garage-notes-section";
+import ChangePasswordDialog from "@/components/profile/change-password-dialog";
+import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
   const { profile, loading, updateCity, updateVehicle } = useProfile();
   const { badgeData } = useBadges();
   const { notificationPermission, requestingPermission, requestNotificationPermission } = useNotifications();
   const { cities, brands, models, fetchModels, setModels } = useLocations();
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
 
   const handleCityUpdate = useCallback(async (cityId: number) => {
     return await updateCity(cityId);
@@ -67,6 +70,15 @@ export default function ProfilePage() {
           onModelsFetch={handleModelsFetch}
           onModelsReset={handleModelsReset}
         />
+        <div className="p-4 bg-muted/30 rounded-lg mb-5">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setShowChangePasswordDialog(true)}
+          >
+            Şifre Değiştir
+          </Button>
+        </div>
         <NotificationSettings
           notificationPermission={notificationPermission}
           requestingPermission={requestingPermission}
@@ -75,6 +87,10 @@ export default function ProfilePage() {
         <ThemeSelector />
         <LogoutButton />
       </main>
+      <ChangePasswordDialog
+        open={showChangePasswordDialog}
+        onOpenChange={setShowChangePasswordDialog}
+      />
     </div>
   );
 }

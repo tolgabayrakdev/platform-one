@@ -60,3 +60,39 @@ export function getEmailVerificationTemplate(code) {
         </html>
     `;
 }
+
+/**
+ * Şifre sıfırlama email template'i
+ */
+export function getPasswordResetTemplate(resetUrl, firstName = 'Kullanıcı') {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .button { display: inline-block; padding: 12px 24px; background: #2563eb; 
+                         color: #ffffff !important; text-decoration: none; border-radius: 6px; 
+                         margin: 20px 0; font-weight: bold; }
+                .button:hover { background: #1d4ed8; color: #ffffff !important; }
+                .warning { color: #dc2626; font-size: 14px; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>Şifre Sıfırlama</h2>
+                <p>Merhaba ${firstName},</p>
+                <p>Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:</p>
+                <div style="text-align: center;">
+                    <a href="${resetUrl}" class="button" style="color: #ffffff !important; text-decoration: none;">Şifremi Sıfırla</a>
+                </div>
+                <p>Bu bağlantı 15 dakika geçerlidir.</p>
+                <p class="warning">Eğer bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz. Şifreniz değişmeyecektir.</p>
+                <p>Saygılarımızla,<br>${BRAND_NAME} Ekibi</p>
+            </div>
+        </body>
+        </html>
+    `;
+}

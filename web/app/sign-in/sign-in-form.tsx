@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import Link from "next/link";
 
 type VerificationStep = "login" | "email-verify" | "phone-verify";
 
@@ -495,6 +496,15 @@ export function SignInForm() {
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
       </Button>
+
+      <div className="text-center">
+        <Link
+          href="/forgot-password"
+          className="text-sm text-primary hover:underline"
+        >
+          Şifremi Unuttum
+        </Link>
+      </div>
     </form>
   );
 }

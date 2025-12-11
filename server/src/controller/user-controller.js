@@ -77,4 +77,34 @@ export default class UserController {
             next(error);
         }
     }
+
+    /**
+     * Kullanıcının şifresini değiştir
+     * PUT /api/users/change-password
+     */
+    async changePassword(req, res, next) {
+        try {
+            const userId = req.user?.userId;
+            const { oldPassword, newPassword } = req.body;
+
+            if (!userId) {
+                throw new HttpException(401, 'Yetkilendirme gerekli');
+            }
+
+            if (!oldPassword || !newPassword) {
+                throw new HttpException(400, 'Mevcut şifre ve yeni şifre zorunludur');
+            }
+
+            // Şifre uzunluk kontrolü
+            if (newPassword.length < 6) {
+                throw new HttpException(400, 'Yeni şifre en az 6 karakter olmalıdır');
+            }
+
+            const result = await this.userService.changePassword(userId, oldPassword, newPassword);
+
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
 }

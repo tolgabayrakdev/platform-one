@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import bcrypt from 'bcrypt';
 import HttpException from '../exceptions/http-exception.js';
 
 export default class UserService {
@@ -142,5 +143,58 @@ export default class UserService {
                   }
                 : null
         };
+    }
+
+    /**
+     * Kullanıcının şifresini değiştir
+     */
+    async changePassword(userId, oldPassword, newPassword) {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            // Kullanıcıyı ve mevcut şifresini getir
+            const userResult = await client.query(
+                'SELECT id, password FROM users WHERE id = $1',
+                [userId]
+            );
+
+            if (userResult.rows.length === 0) {
+                throw new HttpException(404, 'Kullanıcı bulunamadı');
+            }
+
+            const user = userResult.rows[0];
+
+            // Eski şifre kontrolü
+            const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+            if (!isOldPasswordValid) {
+                throw new HttpException(400, 'Mevcut şifre hatalı');
+            }
+
+            // Yeni şifre uzunluk kontrolü
+            if (newPassword.length < 6) {
+                throw new HttpException(400, 'Yeni şifre en az 6 karakter olmalıdır');
+            }
+
+            // Yeni şifreyi hashle
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            // Şifreyi güncelle
+            await client.query(
+                `UPDATE users 
+                 SET password = $1, updated_at = NOW() 
+                 WHERE id = $2`,
+                [hashedPassword, userId]
+            );
+
+            await client.query('COMMIT');
+            return { message: 'Şifre başarıyla değiştirildi' };
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 }

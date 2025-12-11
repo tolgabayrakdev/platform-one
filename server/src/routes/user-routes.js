@@ -9,5 +9,6 @@ const userController = new UserController();
 router.get('/profile', authenticateToken, userController.getProfile.bind(userController));
 router.put('/city', authenticateToken, userController.updateCity.bind(userController));
 router.put('/vehicle', authenticateToken, userController.updateVehicle.bind(userController));
+router.put('/change-password', authenticateToken, userController.changePassword.bind(userController));
 
 export default router;
