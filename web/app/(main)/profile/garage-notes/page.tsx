@@ -76,8 +76,6 @@ export default function GarageNotesPage() {
         stats,
         profileName
       );
-
-      toast.success("Yazdırma penceresi açıldı");
     } catch (error: any) {
       toast.error(error.message || "PDF oluşturulamadı");
     } finally {
@@ -107,31 +105,31 @@ export default function GarageNotesPage() {
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="max-w-xl mx-auto px-4 h-12 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="max-w-xl mx-auto px-3 sm:px-4 h-14 sm:h-12 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <ProfileBackButton />
-            <h1 className="font-semibold text-base">Garaj Notlarım</h1>
+            <h1 className="font-semibold text-sm sm:text-base truncate">Garaj Notlarım</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {notes.length > 0 && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleExportPDF}
                 disabled={exportingPDF}
-                className="h-8 text-xs"
+                className="h-9 sm:h-8 text-xs px-2 sm:px-3 min-w-[44px] sm:min-w-0"
               >
                 {exportingPDF ? (
                   <>
-                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                    Oluşturuluyor...
+                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin sm:mr-1" />
+                    <span className="hidden sm:inline">Oluşturuluyor...</span>
                   </>
                 ) : (
                   <>
-                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 sm:w-3 sm:h-3 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    PDF İndir
+                    <span className="hidden sm:inline">PDF İndir</span>
                   </>
                 )}
               </Button>
@@ -139,22 +137,23 @@ export default function GarageNotesPage() {
             <Button
               size="sm"
               onClick={() => setShowDialog(true)}
-              className="h-8"
+              className="h-9 sm:h-8 px-3 sm:px-4 text-xs sm:text-sm min-w-[44px] sm:min-w-0"
             >
-              + Yeni Not
+              <span className="hidden sm:inline">+ Yeni Not</span>
+              <span className="sm:hidden">+</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-xl mx-auto px-4 py-6">
+      <main className="max-w-xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* İstatistikler */}
         {stats && !statsLoading && (
-          <div className="mb-6 grid grid-cols-2 gap-3">
-            <div className="p-4 bg-muted/30 rounded-lg border border-border">
+          <div className="mb-4 sm:mb-6 grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="p-3 sm:p-4 bg-muted/30 rounded-lg border border-border">
               <p className="text-xs text-muted-foreground mb-1">Toplam Harcama</p>
-              <p className="text-lg font-semibold">
+              <p className="text-base sm:text-lg font-semibold break-words">
                 {new Intl.NumberFormat("tr-TR", {
                   style: "currency",
                   currency: "TRY",
@@ -162,15 +161,15 @@ export default function GarageNotesPage() {
                 }).format(stats.total_cost)}
               </p>
             </div>
-            <div className="p-4 bg-muted/30 rounded-lg border border-border">
+            <div className="p-3 sm:p-4 bg-muted/30 rounded-lg border border-border">
               <p className="text-xs text-muted-foreground mb-1">Toplam Kayıt</p>
-              <p className="text-lg font-semibold">{stats.total_notes}</p>
+              <p className="text-base sm:text-lg font-semibold">{stats.total_notes}</p>
             </div>
             {stats.last_maintenance && (
-              <div className="p-4 bg-muted/30 rounded-lg border border-border col-span-2">
+              <div className="p-3 sm:p-4 bg-muted/30 rounded-lg border border-border col-span-2">
                 <p className="text-xs text-muted-foreground mb-1">Son Bakım</p>
-                <p className="text-sm font-medium">{stats.last_maintenance.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-sm font-medium break-words">{stats.last_maintenance.title}</p>
+                <p className="text-xs text-muted-foreground mt-1 break-words">
                   {new Date(stats.last_maintenance.date).toLocaleDateString("tr-TR")}
                   {stats.last_maintenance.mileage && ` • ${stats.last_maintenance.mileage.toLocaleString("tr-TR")} km`}
                 </p>
@@ -181,14 +180,14 @@ export default function GarageNotesPage() {
 
         {/* Notlar Listesi */}
         {notes.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center py-12 sm:py-16 px-4">
             <p className="text-4xl mb-3">📝</p>
-            <p className="text-muted-foreground mb-4">Henüz garaj notu eklenmemiş</p>
-            <Button onClick={() => setShowDialog(true)}>İlk Notunu Ekle</Button>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4">Henüz garaj notu eklenmemiş</p>
+            <Button onClick={() => setShowDialog(true)} className="h-10 sm:h-9">İlk Notunu Ekle</Button>
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {notes.map((note) => (
                 <GarageNoteCard
                   key={note.id}
@@ -200,11 +199,13 @@ export default function GarageNotesPage() {
             </div>
             {/* Pagination */}
             {totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={goToPage}
-              />
+              <div className="mt-4 sm:mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                />
+              </div>
             )}
           </>
         )}
