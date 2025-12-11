@@ -9,6 +9,15 @@ export default function NotificationSettings({
   requestingPermission,
   onRequestPermission,
 }: NotificationSettingsProps) {
+  const isIOS = typeof window !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = typeof window !== "undefined" && /Android/i.test(navigator.userAgent);
+  const hasNotificationAPI = typeof window !== "undefined" && "Notification" in window;
+  const hasServiceWorker = typeof window !== "undefined" && "serviceWorker" in navigator;
+  
+  // iOS'ta bildirimler için Service Worker gerekli (iOS 16.4+)
+  // Android'de genellikle Notification API yeterlidir
+  const isSupported = hasNotificationAPI && (!isIOS || hasServiceWorker);
+
   return (
     <div className="mb-8">
       <p className="text-xs text-muted-foreground mb-3">Bildirimler</p>
@@ -26,15 +35,24 @@ export default function NotificationSettings({
           {notificationPermission === "denied" && (
             <span className="text-xs text-red-600 font-medium">✗ Reddedildi</span>
           )}
+          {!isSupported && (
+            <span className="text-xs text-muted-foreground font-medium">Desteklenmiyor</span>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mb-3">
-          {notificationPermission === "granted"
-            ? "Bildirim izni verildi. Yeni bildirimler tarayıcınızdan gösterilecek."
-            : notificationPermission === "denied"
-              ? "Bildirim izni reddedilmiş. Tarayıcı ayarlarından manuel olarak açabilirsiniz."
-              : "Yeni bildirimler için tarayıcı bildirim izni verin."}
+          {!isSupported
+            ? isIOS
+              ? "iOS'ta bildirimler iOS 16.4+ ve PWA (Ana Ekrana Ekle) gerektirir. Safari'de paylaş butonuna tıklayıp 'Ana Ekrana Ekle' seçeneğini kullanın. iOS Chrome, Safari'nin WebKit motorunu kullandığı için aynı kısıtlamalar geçerlidir."
+              : isAndroid
+                ? "Android tarayıcınız bildirimleri desteklemiyor. Chrome veya Firefox gibi modern bir tarayıcı kullanmanız önerilir. Android'de genellikle bildirimler sorunsuz çalışır."
+                : "Tarayıcınız bildirimleri desteklemiyor. Lütfen modern bir tarayıcı kullanın."
+            : notificationPermission === "granted"
+              ? "Bildirim izni verildi. Yeni bildirimler tarayıcınızdan gösterilecek."
+              : notificationPermission === "denied"
+                ? "Bildirim izni reddedilmiş. Tarayıcı ayarlarından manuel olarak açabilirsiniz."
+                : "Yeni bildirimler için tarayıcı bildirim izni verin."}
         </p>
-        {notificationPermission !== "granted" && (
+        {isSupported && notificationPermission !== "granted" && (
           <button
             onClick={onRequestPermission}
             disabled={requestingPermission || notificationPermission === "denied"}

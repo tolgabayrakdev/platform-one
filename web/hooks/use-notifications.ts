@@ -12,12 +12,57 @@ export function useNotifications() {
   function checkNotificationPermission() {
     if (typeof window !== "undefined" && "Notification" in window) {
       setNotificationPermission(Notification.permission);
+    } else {
+      // Mobil tarayıcılarda Notification API mevcut olmayabilir
+      setNotificationPermission(null);
     }
   }
 
+  function isIOS(): boolean {
+    if (typeof window === "undefined") return false;
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+
+  function isAndroid(): boolean {
+    if (typeof window === "undefined") return false;
+    return /Android/i.test(navigator.userAgent);
+  }
+
+  function isNotificationSupported(): boolean {
+    if (typeof window === "undefined") return false;
+    
+    // Notification API kontrolü
+    if (!("Notification" in window)) return false;
+    
+    // iOS'ta bildirimler iOS 16.4+ ve Service Worker gerektirir
+    // iOS Chrome aslında Safari WebKit kullanır, bu yüzden aynı kısıtlamalar geçerlidir
+    if (isIOS()) {
+      // iOS 16.4+ kontrolü (Service Worker desteği ile birlikte)
+      if (!("serviceWorker" in navigator)) {
+        return false;
+      }
+    }
+    
+    // Android'de genellikle Notification API yeterlidir
+    // Chrome, Firefox ve diğer modern tarayıcılar destekler
+    // Eski veya özel tarayıcılar desteklemeyebilir ama bu durumda
+    // Notification API zaten mevcut olmayacaktır
+    
+    return true;
+  }
+
   async function requestNotificationPermission() {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      toast.error("Tarayıcınız bildirimleri desteklemiyor");
+    if (!isNotificationSupported()) {
+      // iOS için özel mesaj
+      if (isIOS()) {
+        toast.error("iOS'ta bildirimler iOS 16.4+ ve PWA (Ana Ekrana Ekle) gerektirir. Lütfen Safari'de sayfayı ana ekrana ekleyin.");
+      } else if (isAndroid()) {
+        // Android'de genellikle Chrome/Firefox destekler
+        // Eğer desteklenmiyorsa muhtemelen eski veya özel bir tarayıcı
+        toast.error("Tarayıcınız bildirimleri desteklemiyor. Chrome veya Firefox kullanmanız önerilir.");
+      } else {
+        toast.error("Tarayıcınız bildirimleri desteklemiyor");
+      }
       return;
     }
 
