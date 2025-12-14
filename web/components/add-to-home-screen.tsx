@@ -94,53 +94,53 @@ export default function AddToHomeScreen() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
           transition={{ duration: 0.3 }}
-          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-50"
+          className="fixed bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 md:left-auto md:right-4 md:max-w-sm z-50"
         >
-          <div className="bg-background border border-border rounded-lg shadow-lg p-4 md:p-5 relative">
+          <div className="bg-background border border-border rounded-lg shadow-lg p-3 sm:p-4 md:p-5 relative">
             <button
               onClick={handleDismiss}
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-muted transition-colors"
+              className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 p-1.5 sm:p-1 rounded-full hover:bg-muted active:bg-muted transition-colors touch-manipulation"
               aria-label="Kapat"
             >
-              <X className="w-4 h-4 text-muted-foreground" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
             </button>
 
-            <div className="flex items-start gap-3 pr-6">
-              <div className="flex-shrink-0 mt-1">
+            <div className="flex items-start gap-2 sm:gap-3 pr-7 sm:pr-6">
+              <div className="flex-shrink-0 mt-0.5 sm:mt-1">
                 {isIOS ? (
-                  <Smartphone className="w-6 h-6 text-primary" />
+                  <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 ) : (
-                  <Download className="w-6 h-6 text-primary" />
+                  <Download className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm md:text-base mb-1">
+                <h3 className="font-semibold text-xs sm:text-sm md:text-base mb-1">
                   Uygulamayı Ana Ekrana Ekleyin
                 </h3>
                 {isIOS ? (
                   <>
-                    <div className="text-xs md:text-sm text-muted-foreground space-y-1 mb-3">
-                      <p>1. Safari menüsünden paylaş butonuna (⬆️) tıklayın</p>
-                      <p>2. "Ana Ekrana Ekle" seçeneğini seçin</p>
+                    <div className="text-[11px] sm:text-xs md:text-sm text-muted-foreground space-y-0.5 sm:space-y-1 mb-2 sm:mb-3">
+                      <p className="leading-relaxed">1. Safari menüsünden paylaş butonuna (⬆️) tıklayın</p>
+                      <p className="leading-relaxed">2. "Ana Ekrana Ekle" seçeneğini seçin</p>
                     </div>
                     <button
                       onClick={handleDismiss}
-                      className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                      className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-primary text-primary-foreground rounded-md text-xs sm:text-sm font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors touch-manipulation"
                     >
                       Anladım
                     </button>
                   </>
                 ) : (
                   <>
-                    <p className="text-xs md:text-sm text-muted-foreground mb-3">
+                    <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mb-2 sm:mb-3 leading-relaxed">
                       Daha hızlı erişim için uygulamayı ana ekranınıza ekleyin
                     </p>
                     <button
                       onClick={handleInstallClick}
-                      className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                      className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-primary text-primary-foreground rounded-md text-xs sm:text-sm font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 touch-manipulation"
                     >
-                      <Download className="w-4 h-4" />
-                      Ana Ekrana Ekle
+                      <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span>Ana Ekrana Ekle</span>
                     </button>
                   </>
                 )}

@@ -26,20 +26,20 @@ export const metadata: Metadata = {
 
 export default function SignIn() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-6">
+      <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Giriş Yap</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Giriş Yap</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Hesabınıza giriş yapmak için bilgilerinizi girin
           </p>
         </div>
 
-        <div className="text-center mb-4">
+        <div className="text-center">
           <InstallAppButton variant="link" />
         </div>
 
-        <div className="border border-border rounded-lg p-8 bg-background">
+        <div className="border border-border rounded-lg p-4 sm:p-6 md:p-8 bg-background">
           <SignInForm />
         </div>
 
