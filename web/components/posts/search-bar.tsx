@@ -15,6 +15,8 @@ export default function SearchBar({ searchQuery, onSearchChange, onClear }: Sear
           placeholder="Ara..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
+          spellCheck={false}
+          lang="tr"
           className="w-full px-3 py-1.5 pl-9 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
         />
         <svg

@@ -136,6 +136,8 @@ function CommentItem({
                   }}
                   placeholder="Cevabınızı yazın..."
                   rows={2}
+                  spellCheck={false}
+                  lang="tr"
                   className={`flex-1 px-3 py-2 ${textSize} border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none`}
                 />
                 <button
@@ -548,6 +550,8 @@ export default function CommentsSection({ postId, isAuthenticated, postOwnerId }
               }}
               placeholder="Yorumunuzu yazın..."
               rows={2}
+              spellCheck={false}
+              lang="tr"
               className="flex-1 px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
             />
             <button

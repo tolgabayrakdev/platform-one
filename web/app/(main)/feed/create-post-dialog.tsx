@@ -356,6 +356,8 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                           newOptions[index] = e.target.value;
                           setPollOptions(newOptions);
                         }}
+                        spellCheck={false}
+                        lang="tr"
                         placeholder={`Seçenek ${index + 1}`}
                         maxLength={200}
                         className="flex-1 px-3 py-2 text-sm border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -468,6 +470,8 @@ export default function CreatePostDialog({ open, onClose, onCreated }: CreatePos
                 }}
                 placeholder="Sorunuzu, deneyiminizi veya paylaşmak istediğiniz bilgiyi yazın..."
                 rows={4}
+                spellCheck={false}
+                lang="tr"
                 className={`w-full px-3 py-2 text-sm border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 resize-none transition-colors ${content.length >= 500
                   ? "border-destructive focus:ring-destructive"
                   : "border-input focus:ring-ring"

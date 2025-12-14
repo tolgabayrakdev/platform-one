@@ -118,6 +118,8 @@ export default function GarageNoteDialog({ open, onOpenChange, note, onSubmit }:
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              spellCheck={false}
+              lang="tr"
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder="Örn: Periyodik Bakım"
               required
@@ -183,6 +185,8 @@ export default function GarageNoteDialog({ open, onOpenChange, note, onSubmit }:
               type="text"
               value={formData.service_location}
               onChange={(e) => setFormData({ ...formData, service_location: e.target.value })}
+              spellCheck={false}
+              lang="tr"
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder="Örn: Oto Servis XYZ"
             />
@@ -198,6 +202,8 @@ export default function GarageNoteDialog({ open, onOpenChange, note, onSubmit }:
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
+              spellCheck={false}
+              lang="tr"
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               placeholder="Detaylı bilgiler, notlar..."
             />

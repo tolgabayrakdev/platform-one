@@ -37,6 +37,8 @@ export default function ContactForm() {
           required
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          spellCheck={false}
+          lang="tr"
           className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder="Adınız ve soyadınız"
         />
@@ -67,6 +69,8 @@ export default function ContactForm() {
           required
           value={formData.subject}
           onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+          spellCheck={false}
+          lang="tr"
           className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder="Mesajınızın konusu"
         />
@@ -82,6 +86,8 @@ export default function ContactForm() {
           rows={6}
           value={formData.message}
           onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+          spellCheck={false}
+          lang="tr"
           className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
           placeholder="Mesajınızı buraya yazın..."
         />
