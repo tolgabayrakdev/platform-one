@@ -6,6 +6,8 @@ import LandingHero from "@/components/landing-hero";
 import LandingStats from "@/components/landing-stats";
 import LandingTrends from "@/components/landing-trends";
 import LandingMap from "@/components/landing-map";
+import AddToHomeScreen from "@/components/add-to-home-screen";
+import InstallAppButton from "@/components/install-app-button";
 
 const baseUrl = process.env.NEXT_PUBLIC_URL || "https://garajmuhabbet.com";
 
@@ -230,6 +232,7 @@ export default async function Home() {
               </h1>
             </Link>
             <div className="flex items-center gap-2 md:gap-3">
+              <InstallAppButton variant="link" />
               <Link
                 href="/sign-in"
                 className="px-3 py-1.5 md:px-5 md:py-2.5 text-xs md:text-sm font-medium rounded-lg border border-border hover:bg-muted transition-colors"
@@ -305,6 +308,9 @@ export default async function Home() {
           )}
         </section>
       </main>
+
+      {/* PWA Add to Home Screen Prompt */}
+      <AddToHomeScreen />
 
       {/* Footer */}
       <footer className="border-t border-border py-6 md:py-8 mt-12 md:mt-16">

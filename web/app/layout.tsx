@@ -85,6 +85,12 @@ export const metadata: Metadata = {
     canonical: baseUrl,
   },
   category: "Automotive Community",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Garaj Muhabbet",
+  },
 };
 
 export default function RootLayout({

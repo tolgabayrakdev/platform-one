@@ -1,0 +1,33 @@
+{
+  "name": "Garaj Muhabbet - Araç Sahipleri Topluluğu",
+  "short_name": "Garaj Muhabbet",
+  "description": "Türkiye'nin 81 ilinden araç sahiplerinin bir araya geldiği topluluk platformu",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/Garajmuhabbet.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Garajmuhabbet.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Garajmuhabbet.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["social", "automotive", "community"],
+  "lang": "tr",
+  "dir": "ltr"
+}

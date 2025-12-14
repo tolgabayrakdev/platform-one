@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import { SignInForm } from "./sign-in-form";
 import Link from "next/link";
+import AddToHomeScreen from "@/components/add-to-home-screen";
+import InstallAppButton from "@/components/install-app-button";
 
 export const metadata: Metadata = {
   title: "Giriş Yap | Garaj Muhabbet",
@@ -33,6 +35,10 @@ export default function SignIn() {
           </p>
         </div>
 
+        <div className="text-center mb-4">
+          <InstallAppButton variant="link" />
+        </div>
+
         <div className="border border-border rounded-lg p-8 bg-background">
           <SignInForm />
         </div>
@@ -44,6 +50,7 @@ export default function SignIn() {
           </Link>
         </p>
       </div>
+      <AddToHomeScreen />
     </div>
   );
 }
